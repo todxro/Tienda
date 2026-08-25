@@ -91,7 +91,7 @@ public class Inventario {
                     int stock = Integer.parseInt(datos[3]);
                     listaProductos.add(new Producto(id, nombre, precio, stock, "categoria"));
                 }
-            }
+            } //aa
         } catch (IOException e) {
             System.out.println("Error al cargar inventario: " + e.getMessage());
         }
