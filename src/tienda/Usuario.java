@@ -17,4 +17,4 @@ public class Usuario extends Cuenta {
     public void setCarrito(ArrayList<String> Carrito) {
         this.Carrito = Carrito;
     }
-}
+} //arraylist para el carrito de compras del usuario, se puede agregar productos a este carrito y luego proceder a la compra
