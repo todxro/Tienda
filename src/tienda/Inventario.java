@@ -2,6 +2,7 @@ package tienda;
 
 import java.io.*;
 import java.util.ArrayList;
+import java.util.List;
 
 public class Inventario {
     private ArrayList<Producto> listaProductos;
@@ -56,7 +57,17 @@ public class Inventario {
         cargarDesdeArchivo(); // Relee del disco por si otra ventana lo modificó
         return listaProductos;
     }
+  public double calcularPromedioPorCategoria(List<Producto> listaProductos, String categoriaBuscada) {
+        double suma = 0;
+        int i = 0;
 
+        for (Producto p : Producto) {
+            if (p.getCategoria().equalsIgnoreCase(categoriaBuscada)) {
+                suma += p.getPrecio();
+                i++;
+            }
+        }
+  }    
     // --- MÉTODOS DE PERSISTENCIA EN DISCO ---
     private void guardarEnArchivo() {
         try (BufferedWriter bw = new BufferedWriter(new FileWriter(RUTA_ARCHIVO))) {
