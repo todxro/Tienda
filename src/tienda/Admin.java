@@ -18,4 +18,4 @@ public class Admin extends Cuenta {
     public void setCuentas(ArrayList<String> cuentas) {
         this.cuentas = cuentas;
     }
-} //hola
+} //holaada
