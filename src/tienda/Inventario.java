@@ -1,8 +1,7 @@
 package tienda;
-
 import java.io.*;
 import java.util.ArrayList;
-import java.util.List;
+import java.util.Comparator;
 
 public class Inventario {
     private ArrayList<Producto> listaProductos;
@@ -57,17 +56,42 @@ public class Inventario {
         cargarDesdeArchivo(); // Relee del disco por si otra ventana lo modificó
         return listaProductos;
     }
-  public double calcularPromedioPorCategoria(List<Producto> listaProductos, String categoriaBuscada) {
-        double suma = 0;
-        int i = 0;
-
-        for (Producto p : Producto) {
-            if (p.getCategoria().equalsIgnoreCase(categoriaBuscada)) {
-                suma += p.getPrecio();
-                i++;
-            }
+    public void ordenarPor(int opcion, boolean ascendente){
+        //ingresar opcion para saber que ordenar 1 precio, 2 stock, 3 id
+        Comparator<Producto> comparador = null; // es la regla que vamos a usar para comparar
+        String nombreAtributo = "";
+    
+        switch (opcion) {
+            case 1:
+                comparador = Comparator.comparingDouble(Producto::getPrecio);
+                nombreAtributo = "Precio";
+                break;
+            case 2:
+                comparador = Comparator.comparingInt(Producto::getStock);
+                nombreAtributo = "Stock";
+                break;
+            case 3:
+                comparador = Comparator.comparing(Producto::getId);
+                nombreAtributo = "ID";
+                break;
+            default:
+                System.out.println("Opcion no valida, usa 1 (Precio), 2 (Stock) o 3 (ID).");
+                return; 
         }
-  }    
+
+        // si ingresas false es mayor a Menor
+        if (!ascendente) {
+            comparador = comparador.reversed();
+        }
+        
+        this.listaProductos.sort(comparador);
+        
+       guardarEnArchivo(); 
+        
+        // Mensaje de confirmación en consola
+        String orden = ascendente ? "(Menor a Mayor)" : "(Mayor a Menor)"; //if y else para saber si ordenamos de menor a mayor
+        System.out.println("Inventario ordenado por " + nombreAtributo + " " + orden);
+    }
     // --- MÉTODOS DE PERSISTENCIA EN DISCO ---
     private void guardarEnArchivo() {
         try (BufferedWriter bw = new BufferedWriter(new FileWriter(RUTA_ARCHIVO))) {

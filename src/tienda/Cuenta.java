@@ -2,7 +2,7 @@ package tienda;
 
 
 import java.util.Date;
-aaa
+
 public class Cuenta {
     private String nombre;
     private String apellido; 
