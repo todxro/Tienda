@@ -8,9 +8,13 @@ public class VentanaUsuario extends JFrame {
     private JTextArea areaTexto;
 
     public VentanaUsuario() {
+        this(null);
+    }
+
+    public VentanaUsuario(Usuario usuario) {
         this.inventario = new Inventario();
 
-        setTitle("Vista Usuario - Catálogo");
+        setTitle(usuario == null ? "Vista Usuario - Catálogo" : "Catálogo - " + usuario.getNombre());
         setSize(400, 350);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLayout(new BorderLayout(10, 10));
@@ -38,7 +42,7 @@ public class VentanaUsuario extends JFrame {
     // MAIN INDIVIDUAL PARA EJECUTAR SOLO EL USUARIO
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
-            new VentanaUsuario().setVisible(true);
+            new VentanaLogin().setVisible(true);
         });
     }
 }
