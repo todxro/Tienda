@@ -1,4 +1,4 @@
-jose 6.6
-eduardo 6.1
-vicente 6
-matias 5.8
+jose 6.9
+eduardo 6.8
+vicente 6.6
+matias 6.7
