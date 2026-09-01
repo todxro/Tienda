@@ -91,6 +91,68 @@ public class Inventario {
         String orden = ascendente ? "(Menor a Mayor)" : "(Mayor a Menor)"; //if y else para saber si ordenamos de menor a mayor
         System.out.println("Inventario ordenado por " + nombreAtributo + " " + orden);
     }
+        //METODOS DE BUSQUEDA 
+    public ArrayList<Producto> buscarPorNombre(String texto) {
+        ArrayList<Producto> resultados = new ArrayList<>(); //creamos una lista temporal para tener los productos que pasen el filtro
+        for (Producto p : listaProductos) { //recorremos la lista
+            if (p.getNombre().toLowerCase().contains(texto.toLowerCase())) { //el filtro convertimos todo en minisucula y usamos contains para saber si va coinicidiendo
+                resultados.add(p); //si se cumple la coindicion se agrega a la lista temporal
+            }
+        }
+        return resultados; 
+    }
+    public ArrayList<Producto> buscarPorCategoria(String categoria) {
+        ArrayList<Producto> resultados = new ArrayList<>();
+        for (Producto p : listaProductos) {
+            if (p.getCategoria().equalsIgnoreCase(categoria)) {
+                resultados.add(p);
+            }
+        }
+        return resultados;
+    }
+    public ArrayList<Producto> filtrarPorRangoPrecio(double min, double max) {
+        ArrayList<Producto> resultados = new ArrayList<>();
+        for (Producto p : listaProductos) {
+            if (p.getPrecio() >= min && p.getPrecio() <= max) {
+                resultados.add(p);
+            }
+        }
+        return resultados;
+    }
+    public ArrayList<Producto> obtenerProductosSinStock() {
+        ArrayList<Producto> resultados = new ArrayList<>();
+        for (Producto p : listaProductos) {
+            if (p.getStock() == 0) {
+                resultados.add(p);
+            }
+        }
+        return resultados;
+    }
+    public ArrayList<Producto> obtenerProductosDisponibles() {
+        ArrayList<Producto> resultados = new ArrayList<>();
+        for (Producto p : listaProductos) {
+            if (p.getStock() > 0) {
+                resultados.add(p);
+            }
+        }
+        return resultados;
+    }
+    //generar nuevo id 
+    public String generarNuevoId() {
+        if (listaProductos.isEmpty()) return "P01"; //revisamos si hay productos si no asignamos la id P01
+        
+        int maxId = 0; 
+        for (Producto p : listaProductos) { //buscamos el id mayor guardandola con el maxID
+            try { //evitamos errores si la id por algun motivo tiene letras en vez de numeros al final
+                int numId = Integer.parseInt(p.getId().replace("P", ""));  // quitamos la P  y convertimos el numero en entero
+                if (numId > maxId) {  //comparamos si es mayor que el maxmio actual
+                    maxId = numId; 
+                }
+            } catch (NumberFormatException e) {
+            }
+        }
+        return "P" + String.format("%02d", maxId + 1); //asignamos la nueva id al tener el maximo
+    }
     //cambiar metodo inventario
     public void guardarEnArchivo() {
         try (BufferedWriter bw = new BufferedWriter(new FileWriter(RUTA_ARCHIVO))) {
