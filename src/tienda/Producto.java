@@ -20,15 +20,12 @@ public class Producto {
     public String getNombre() { return nombre; }
     public double getPrecio() { return precio; }
     public int getStock() { return stock; }
-    public void setStock(int stock) { 
-        if (stock <= 0) {
+    public void setStock(int stock) {
+        if (stock >= 0) {
             this.stock = stock;
+        } else {
+            System.out.println("Error: el stock no puede ser negativo");
         }
-        else {
-            System.out.println ("Error: el stock no puede ser negativo");
-        }
-
-
     }
         public String getCategoria() { return categoria; }
     public void setPrecio(double precio) { 

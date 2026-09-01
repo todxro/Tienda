@@ -53,11 +53,10 @@ public class Inventario {
     }
 
     public ArrayList<Producto> getListaProductos() {
-        cargarDesdeArchivo(); // Relee del disco por si otra ventana lo modificó
+        cargarDesdeArchivo();
         return listaProductos;
     }
     public void ordenarPor(int opcion, boolean ascendente){
-        //ingresar opcion para saber que ordenar 1 precio, 2 stock, 3 id
         Comparator<Producto> comparador = null; // es la regla que vamos a usar para comparar
         String nombreAtributo = "";
     
@@ -92,8 +91,8 @@ public class Inventario {
         String orden = ascendente ? "(Menor a Mayor)" : "(Mayor a Menor)"; //if y else para saber si ordenamos de menor a mayor
         System.out.println("Inventario ordenado por " + nombreAtributo + " " + orden);
     }
-    // --- MÉTODOS DE PERSISTENCIA EN DISCO ---
-    private void guardarEnArchivo() {
+    //cambiar metodo inventario
+    public void guardarEnArchivo() {
         try (BufferedWriter bw = new BufferedWriter(new FileWriter(RUTA_ARCHIVO))) {
             for (Producto p : listaProductos) {
                 // Formato: ID;Nombre;Precio;Stock
@@ -107,17 +106,23 @@ public class Inventario {
 
     private void cargarDesdeArchivo() {
         File archivo = new File(RUTA_ARCHIVO);
+        listaProductos.clear();
+
         if (!archivo.exists()) {
-            listaProductos.clear();
             listaProductos.add(new Producto("P01", "Teclado Mecánico", 45000, 10, "Teclados"));
+            listaProductos.add(new Producto("P02", "Mouse Gamer", 25000, 8, "Periféricos"));
+            listaProductos.add(new Producto("P03", "Monitor 24\"", 120000, 5, "Monitores"));
             guardarEnArchivo();
             return;
         }
 
         try (BufferedReader br = new BufferedReader(new FileReader(archivo))) {
-            listaProductos.clear();
             String linea;
+            boolean hayProductos = false;
             while ((linea = br.readLine()) != null) {
+                if (linea.trim().isEmpty()) {
+                    continue;
+                }
                 String[] datos = linea.split(";");
                 if (datos.length == 4) {
                     String id = datos[0];
@@ -125,10 +130,22 @@ public class Inventario {
                     double precio = Double.parseDouble(datos[2]);
                     int stock = Integer.parseInt(datos[3]);
                     listaProductos.add(new Producto(id, nombre, precio, stock, "categoria"));
+                    hayProductos = true;
                 }
-            } //aa
+            }
+
+            if (!hayProductos) {
+                listaProductos.add(new Producto("P01", "Teclado Mecánico", 45000, 10, "Teclados"));
+                listaProductos.add(new Producto("P02", "Mouse Gamer", 25000, 8, "Periféricos"));
+                listaProductos.add(new Producto("P03", "Monitor 24\"", 120000, 5, "Monitores"));
+                guardarEnArchivo();
+            }
         } catch (IOException e) {
             System.out.println("Error al cargar inventario: " + e.getMessage());
+            listaProductos.add(new Producto("P01", "Teclado Mecánico", 45000, 10, "Teclados"));
+            listaProductos.add(new Producto("P02", "Mouse Gamer", 25000, 8, "Periféricos"));
+            listaProductos.add(new Producto("P03", "Monitor 24\"", 120000, 5, "Monitores"));
+            guardarEnArchivo();
         }
     }
 }
