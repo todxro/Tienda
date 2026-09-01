@@ -1,6 +1,0 @@
-P01;Teclado Mecánico;45000.0;5
-P02;Mouse;15000.0;10
-P03;Mouse;15000.0;10
-P04;,perro;15000.0;10
-P05;Mouse Gamer;15000.0;10
-P06;Mouse;15000.0;10
