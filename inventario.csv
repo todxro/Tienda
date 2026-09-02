@@ -1,0 +1,4 @@
+id,nombre,precio,stock,categoria
+P01,Teclado Mecánico,45000.0,10,Teclados
+P02,Mouse Gamer,25000.0,8,Periféricos
+P03,"Monitor 24""",120000.0,5,Monitores
