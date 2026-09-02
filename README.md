@@ -1,4 +1,4 @@
-jose 6.9
-eduardo 6.8
-vicente 6.6
-matias 6.7
+jose paredes: 6.9
+vicente guerra: 6.6
+matias soriano: 6.8
+eduardo guajardo: 6.7
