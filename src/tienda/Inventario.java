@@ -170,44 +170,36 @@ public class Inventario {
         File archivo = new File(RUTA_ARCHIVO);
         listaProductos.clear();
 
+        // si no existe, crear inventario vacio
         if (!archivo.exists()) {
-            listaProductos.add(new Producto("P01", "Teclado Mecánico", 45000, 10, "Teclados"));
-            listaProductos.add(new Producto("P02", "Mouse Gamer", 25000, 8, "Periféricos"));
-            listaProductos.add(new Producto("P03", "Monitor 24\"", 120000, 5, "Monitores"));
             guardarEnArchivo();
             return;
         }
 
         try (BufferedReader br = new BufferedReader(new FileReader(archivo))) {
             String linea;
-            boolean hayProductos = false;
             while ((linea = br.readLine()) != null) {
                 if (linea.trim().isEmpty()) {
                     continue;
                 }
                 String[] datos = linea.split(";");
-                if (datos.length == 4) {
-                    String id = datos[0];
-                    String nombre = datos[1];
-                    double precio = Double.parseDouble(datos[2]);
-                    int stock = Integer.parseInt(datos[3]);
-                    listaProductos.add(new Producto(id, nombre, precio, stock, "categoria"));
-                    hayProductos = true;
+                if (datos.length >= 4) {
+                    try {
+                        String id = datos[0];
+                        String nombre = datos[1];
+                        double precio = Double.parseDouble(datos[2]);
+                        int stock = Integer.parseInt(datos[3]);
+                        String categoria = (datos.length == 5) ? datos[4] : "Sin Categoría";
+                        
+                        listaProductos.add(new Producto(id, nombre, precio, stock, categoria));
+                    } catch (NumberFormatException e) {
+                        // evitamos que el programa muera si hay una letra en lugar de un numero
+                    }
                 }
-            }
-
-            if (!hayProductos) {
-                listaProductos.add(new Producto("P01", "Teclado Mecánico", 45000, 10, "Teclados"));
-                listaProductos.add(new Producto("P02", "Mouse Gamer", 25000, 8, "Periféricos"));
-                listaProductos.add(new Producto("P03", "Monitor 24\"", 120000, 5, "Monitores"));
-                guardarEnArchivo();
             }
         } catch (IOException e) {
             System.out.println("Error al cargar inventario: " + e.getMessage());
-            listaProductos.add(new Producto("P01", "Teclado Mecánico", 45000, 10, "Teclados"));
-            listaProductos.add(new Producto("P02", "Mouse Gamer", 25000, 8, "Periféricos"));
-            listaProductos.add(new Producto("P03", "Monitor 24\"", 120000, 5, "Monitores"));
-            guardarEnArchivo();
+            listaProductos.clear(); // mantiene vacio si hay error grave
         }
     }
 }
