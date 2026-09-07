@@ -52,21 +52,23 @@ public class VentanaUsuario extends JFrame {
         JButton btnRefrescar = new JButton("Actualizar / Refrescar catálogo");
         btnRefrescar.addActionListener(e -> actualizarVista());
 
-        // --- BUSCADOR POR NOMBRE ---
+        // buscador por nombre
         JTextField campoBuscar = new JTextField(10);
         JButton btnBuscar = new JButton("Buscar Nombre");
 
+        // si escribo algo busca en el inventario y actualiza la lista
         btnBuscar.addActionListener(e -> {
             String texto = campoBuscar.getText().trim();
             if (!texto.isEmpty()) {
-                StringBuilder sb = new StringBuilder("=== RESULTADOS BÚSQUEDA ===\n\n");
+                StringBuilder sb = new StringBuilder("Productos encontrados:\n\n");
                 for (Producto p : inventario.buscarPorNombre(texto)) {
                     sb.append(p).append("\n");
                 }
                 areaTexto.setText(sb.toString());
             }
         });
-
+        
+        // panel inferior de botones
         JPanel panelAbajo = new JPanel();
         panelAbajo.add(new JLabel("Buscar:"));
         panelAbajo.add(campoBuscar);
