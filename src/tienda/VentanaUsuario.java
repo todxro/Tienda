@@ -15,8 +15,9 @@ public class VentanaUsuario extends JFrame {
     }
 
     public VentanaUsuario(Usuario usuario) {
-        this.usuario = usuario != null ? usuario : new Usuario("Usuario", "Demo", "1234", "", "", "", "",
-                "demo@tienda.cl", 0, new java.util.Date(), "11111111-1");
+        this.usuario = usuario != null ? usuario
+                : new Usuario("Usuario", "Demo", "1234", "", "", "", "",
+                        "demo@tienda.cl", 0, new java.util.Date(), "11111111-1");
         this.inventario = new Inventario();
 
         setTitle("Catálogo - " + this.usuario.getNombre());
@@ -50,7 +51,29 @@ public class VentanaUsuario extends JFrame {
 
         JButton btnRefrescar = new JButton("Actualizar / Refrescar catálogo");
         btnRefrescar.addActionListener(e -> actualizarVista());
-        add(btnRefrescar, BorderLayout.SOUTH);
+
+        // --- BUSCADOR POR NOMBRE ---
+        JTextField campoBuscar = new JTextField(10);
+        JButton btnBuscar = new JButton("Buscar Nombre");
+
+        btnBuscar.addActionListener(e -> {
+            String texto = campoBuscar.getText().trim();
+            if (!texto.isEmpty()) {
+                StringBuilder sb = new StringBuilder("=== RESULTADOS BÚSQUEDA ===\n\n");
+                for (Producto p : inventario.buscarPorNombre(texto)) {
+                    sb.append(p).append("\n");
+                }
+                areaTexto.setText(sb.toString());
+            }
+        });
+
+        JPanel panelAbajo = new JPanel();
+        panelAbajo.add(new JLabel("Buscar:"));
+        panelAbajo.add(campoBuscar);
+        panelAbajo.add(btnBuscar);
+        panelAbajo.add(btnRefrescar);
+
+        add(panelAbajo, BorderLayout.SOUTH);
 
         actualizarVista();
         setLocationRelativeTo(null);
@@ -95,7 +118,8 @@ public class VentanaUsuario extends JFrame {
             JOptionPane.showMessageDialog(this, "No hay stock suficiente para ese producto.", "Stock insuficiente",
                     JOptionPane.WARNING_MESSAGE);
         } else {
-            JOptionPane.showMessageDialog(this, "Se agregaron " + agregadas + " unidad(es) de " + producto.getNombre() + " al carrito.",
+            JOptionPane.showMessageDialog(this,
+                    "Se agregaron " + agregadas + " unidad(es) de " + producto.getNombre() + " al carrito.",
                     "Producto agregado", JOptionPane.INFORMATION_MESSAGE);
         }
 
