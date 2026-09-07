@@ -59,7 +59,7 @@ public class GestorUsuarios {
         }
         try (BufferedReader lector = new BufferedReader(new FileReader(archivo))) {
             String linea;
-            boolean primeraLinea = true;
+            boolean primeraLinea = true; // para saltarse el encabezado al leer
             while ((linea = lector.readLine()) != null) {
                 if (primeraLinea) {
                     primeraLinea = false;
@@ -67,7 +67,7 @@ public class GestorUsuarios {
                 }
                 if (linea.trim().isEmpty())
                     continue;
-                String[] datos = parsearLineaCSV(linea);
+                String[] datos = parsearLineaCSV(linea); // lee la linea respetando comillas
                 if (datos.length == 4) {
                     String nombre = datos[0];
                     String apellido = datos[1];
@@ -84,7 +84,7 @@ public class GestorUsuarios {
 
     private void guardarUsuarios() {
         try (BufferedWriter escritor = new BufferedWriter(new FileWriter(RUTA_ARCHIVO))) {
-            escritor.write("nombre,apellido,correo,contrasenia");
+            escritor.write("nombre,apellido,correo,contrasenia"); // encabezado del csv
             escritor.newLine();
             for (Usuario usuario : usuarios) {
                 escritor.write(escaparCSV(usuario.getNombre()) + ","
@@ -98,7 +98,7 @@ public class GestorUsuarios {
         }
     }
 
-    // lee una linea del csv parte por parte
+    // lee una linea csv campo por campo, soporta campos con comillas
     private String[] parsearLineaCSV(String linea) {
         ArrayList<String> campos = new ArrayList<>();
         StringBuilder campoActual = new StringBuilder();
@@ -124,7 +124,7 @@ public class GestorUsuarios {
         return campos.toArray(new String[0]);
     }
 
-    // si la parte del codigo tiene coma o comillas lo envuelve en comillas para el csv
+    // si el campo tiene coma o comillas lo envuelve entre comillas para el csv
     private String escaparCSV(String valor) {
         if (valor == null)
             return "";
