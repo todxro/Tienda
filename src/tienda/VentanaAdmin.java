@@ -19,17 +19,24 @@ public class VentanaAdmin extends JFrame {
         areaTexto.setEditable(false);
         add(new JScrollPane(areaTexto), BorderLayout.CENTER);
 
-        JPanel panelControles = new JPanel(new GridLayout(2, 2, 5, 5));
+        JPanel panelControles = new JPanel(new GridLayout(3, 2, 5, 5));
         JTextField txtNombre = new JTextField("Mouse Gamer");
         JButton btnAgregar = new JButton("Agregar Producto");
         JButton btnStock = new JButton("Modificar Stock P01");
+        JButton btnValorTotal = new JButton("Valor Total");
 
         panelControles.add(new JLabel(" Nombre:"));
         panelControles.add(txtNombre);
         panelControles.add(btnAgregar);
         panelControles.add(btnStock);
+        panelControles.add(btnValorTotal);
 
         add(panelControles, BorderLayout.SOUTH);
+        
+        btnValorTotal.addActionListener(e -> {
+            double total = inventario.calcularValorTotalInventario();
+            JOptionPane.showMessageDialog(this, "Valor Total del Inventario: $" + total);
+        });
 
         btnAgregar.addActionListener(e -> {
             String nombre = txtNombre.getText();
