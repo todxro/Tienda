@@ -153,6 +153,50 @@ public class Inventario {
         }
         return "P" + String.format("%02d", maxId + 1); //asignamos la nueva id al tener el maximo
     }
+    public double calcularPrecioPromedioPorCategoria(String categoria) {
+        double sumaPrecios = 0;
+        int cantidadProductos = 0;
+
+        for (Producto p : listaProductos) {
+            if (p.getCategoria().equalsIgnoreCase(categoria)) {
+                sumaPrecios += p.getPrecio();
+                cantidadProductos++;
+            }
+        }
+
+        if (cantidadProductos == 0) {
+            System.out.println("No hay productos en la categoría: " + categoria);
+            return 0.0; 
+        }
+
+        return sumaPrecios / cantidadProductos;
+    }
+    public Producto obtenerProductoMenorStockPorCategoria(String categoria) {
+        Producto productoMenorStock = null;
+        int menorStock = Integer.MAX_VALUE;
+
+        for (Producto p : listaProductos) {
+            if (p.getCategoria().equalsIgnoreCase(categoria)) {
+                if (p.getStock() < menorStock) {
+                    menorStock = p.getStock();
+                    productoMenorStock = p;
+                }
+            }
+        }
+
+        if (productoMenorStock == null) {
+            System.out.println("No hay productos en la categoría: " + categoria);
+        }
+
+        return productoMenorStock;
+    }
+    public double calcularValorTotalInventario() {
+        double valorTotal = 0;
+        for (Producto p : listaProductos) {
+            valorTotal += (p.getPrecio() * p.getStock());
+        }
+        return valorTotal;
+    }
     //cambiar metodo inventario
     public void guardarEnArchivo() {
         try (BufferedWriter bw = new BufferedWriter(new FileWriter(RUTA_ARCHIVO))) {
