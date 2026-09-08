@@ -50,52 +50,6 @@ public boolean agregarProducto(Producto producto) {
 }
 
 
-// coso para quitar producto del carrito
-public boolean quitarProducto(String id) {
-
-    for (int i = 0; i < productos.size(); i++) {
-
-        if (productos.get(i).getId().equalsIgnoreCase(id)) {
-
-            productos.remove(i);
-            cantidades.remove(i);
-
-            return true;
-        }
-    }
-
-    return false;
-}
-
-
-// quita unidades del carrito (osea si puse que quiere 2 cosas quita 1)
-public boolean quitarUnaUnidad(String id) {
-
-    for (int i = 0; i < productos.size(); i++) {
-
-        if (productos.get(i).getId().equalsIgnoreCase(id)) {
-
-            int cantidadActual = cantidades.get(i);
-
-            // si solo queda 1 objeto, directamente lo borra del carrito
-            if (cantidadActual == 1) {
-
-                productos.remove(i);
-                cantidades.remove(i);
-
-            } else {
-
-                cantidades.set(i, cantidadActual - 1);
-            }
-
-            return true;
-        }
-    }
-
-    return false;
-}
-
-
 // esto agarra los productos que hay en el carrito y los devuelve en un arraylist
 public ArrayList<Producto> getProductos() {
     return productos;

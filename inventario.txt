@@ -1,4 +1,4 @@
 P01;Teclado Mecánico;45000.0;5
 P02;Mouse Gamer;25000.0;8
 P03;Monitor 24\";120000.0;5
-P04;32;15000.0;10
+P04;Mando PS5;40000.0;4
