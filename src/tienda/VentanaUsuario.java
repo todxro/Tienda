@@ -4,16 +4,21 @@ import javax.swing.*;
 import java.awt.*;
 
 public class VentanaUsuario extends JFrame {
+    // usuario que esta usando la ventana
     private final Usuario usuario;
+    // inventario que se muestra al usuario
     private final Inventario inventario;
+    // componentes principales de la ventana
     private final JTextArea areaTexto;
     private final JTextField campoIdProducto;
     private final JTextField campoCantidad;
 
+    // crea una ventana de usuario de prueba
     public VentanaUsuario() {
         this(null);
     }
 
+    // crea la ventana con el usuario recibido
     public VentanaUsuario(Usuario usuario) {
         this.usuario = usuario != null ? usuario
                 : new Usuario("Usuario", "Demo", "1234", "", "", "", "",
@@ -34,6 +39,7 @@ public class VentanaUsuario extends JFrame {
         campoCantidad = new JTextField("1");
         panelControl.add(campoCantidad);
 
+        // botones para manejar la compra
         JButton btnAgregar = new JButton("Agregar al carrito");
         btnAgregar.addActionListener(e -> agregarAlCarrito());
         panelControl.add(btnAgregar);
@@ -52,11 +58,11 @@ public class VentanaUsuario extends JFrame {
         JButton btnRefrescar = new JButton("Actualizar / Refrescar catálogo");
         btnRefrescar.addActionListener(e -> actualizarVista());
 
-        // buscador por nombre
+        // campo para buscar productos por nombre
         JTextField campoBuscar = new JTextField(10);
         JButton btnBuscar = new JButton("Buscar Nombre");
 
-        // si escribo algo busca en el inventario y actualiza la lista
+        // busca en el inventario y actualiza la lista
         btnBuscar.addActionListener(e -> {
             String texto = campoBuscar.getText().trim();
             if (!texto.isEmpty()) {
@@ -82,6 +88,7 @@ public class VentanaUsuario extends JFrame {
     }
 
     private void agregarAlCarrito() {
+        // agrega la cantidad indicada al carrito
         String id = campoIdProducto.getText().trim();
         if (id.isEmpty()) {
             JOptionPane.showMessageDialog(this, "Debes ingresar el ID del producto.", "Falta información",
@@ -135,6 +142,7 @@ public class VentanaUsuario extends JFrame {
     }
 
     private void comprarProductos() {
+        // valida y finaliza la compra
         if (usuario.getCarrito().getProductos().isEmpty()) {
             JOptionPane.showMessageDialog(this, "El carrito está vacío.", "Compra",
                     JOptionPane.WARNING_MESSAGE);
@@ -157,6 +165,7 @@ public class VentanaUsuario extends JFrame {
     }
 
     public void actualizarVista() {
+        // muestra inventario y carrito en pantalla
         StringBuilder sb = new StringBuilder("=== CATÁLOGO (USUARIO) ===\n\n");
         for (Producto p : inventario.getListaProductos()) {
             sb.append(p).append("\n");
@@ -183,7 +192,7 @@ public class VentanaUsuario extends JFrame {
         areaTexto.setText(sb.toString());
     }
 
-    // MAIN INDIVIDUAL PARA EJECUTAR SOLO EL USUARIO
+    // inicia la ventana de usuario
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
             new VentanaLogin().setVisible(true);

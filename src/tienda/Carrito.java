@@ -3,46 +3,49 @@ package tienda;
 import java.util.ArrayList;
 public class Carrito {
 
+// productos que fueron agregados
 private ArrayList<Producto> productos;
+// cantidad de cada producto
 private ArrayList<Integer> cantidades;
 
 public Carrito() {
+    // inicia las listas del carrito
     productos = new ArrayList<>();
     cantidades = new ArrayList<>();
 }
 
-// Agregar un producto al carrito
+// agrega un producto al carrito
 public boolean agregarProducto(Producto producto) {
 
-    // Verificar que el producto existe dentro del array
+    // verifica que el producto exista
     if (producto == null) {
         return false;
     }
 
-    // Buscamos si el producto ya anda en el carrito
+    // busca si el producto ya esta en el carrito
     for (int i = 0; i < productos.size(); i++) {
 
         if (productos.get(i).getId().equalsIgnoreCase(producto.getId())) {
 
             int cantidadActual = cantidades.get(i);
 
-            // esto sirve para que no pueda agregar más stock del que hay disponible
+            // evita superar el stock disponible
             if (cantidadActual >= producto.getStock()) {
                 return false;
             }
 
-            // aumenta la cantidad de ese producto en el carrito
+            // aumenta la cantidad del producto
             cantidades.set(i, cantidadActual + 1);
 
             return true;
         }
     }
 
-    // si todo falla y no esta en el carrito verifica si hay stock
+    // verifica el stock antes de agregar un producto nuevo
     if (producto.getStock() <= 0) {
         return false;
     }
-    //caso contrario, agrega el producto al carrito
+    // agrega el producto y su primera unidad
     productos.add(producto);
     cantidades.add(1);
 
@@ -50,13 +53,13 @@ public boolean agregarProducto(Producto producto) {
 }
 
 
-// esto agarra los productos que hay en el carrito y los devuelve en un arraylist
+// entrega los productos del carrito
 public ArrayList<Producto> getProductos() {
     return productos;
 }
 
 
-// pa saber la cantidad de un producto en el carrito, se le pasa el id del producto y devuelve la cantidad
+// busca la cantidad de un producto por su id
 public int getCantidad(String id) {
 
     for (int i = 0; i < productos.size(); i++) {
@@ -88,7 +91,7 @@ public double calcularSubtotal(String id) {
 }
 
 
-// precio total
+// calcula el precio total del carrito
 public double calcularTotal() {
 
     double total = 0;
@@ -105,10 +108,10 @@ public double calcularTotal() {
 }
 
 
-// finalizar y recien aqui descuento el stock
+// finaliza la compra y descuenta el stock
 public boolean finalizarCompra() {
 
-    // verifica si hay stock suficiente de los productos
+    // verifica el stock de todos los productos
     for (int i = 0; i < productos.size(); i++) {
 
         Producto producto = productos.get(i);
@@ -119,7 +122,7 @@ public boolean finalizarCompra() {
         }
     }
 
-    // si es así, entonces descontamos los productos
+    // descuenta el stock despues de validar
     for (int i = 0; i < productos.size(); i++) {
 
         Producto producto = productos.get(i);
@@ -130,7 +133,7 @@ public boolean finalizarCompra() {
         );
     }
 
-    // vaciamos el carrito despues de comprar
+    // vacia el carrito despues de comprar
     productos.clear();
     cantidades.clear();
 
@@ -138,7 +141,7 @@ public boolean finalizarCompra() {
 }
 
 
-// aqui un vaciar carrito pero coso, no descuesnta ni nada el stock por si luego ponen algo
+// vacia el carrito sin modificar el stock
 public void vaciarCarrito() {
 
     productos.clear();
