@@ -21,7 +21,7 @@ public class VentanaUsuario extends JFrame {
         this.inventario = new Inventario();
 
         setTitle("Catálogo - " + this.usuario.getNombre());
-        setSize(700, 500);
+        setSize(1920, 1080);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLayout(new BorderLayout(10, 10));
 
@@ -108,20 +108,25 @@ public class VentanaUsuario extends JFrame {
             return;
         }
 
-        int agregadas = 0;
-        for (int i = 0; i < cantidad; i++) {
-            if (!usuario.getCarrito().agregarProducto(producto)) {
-                break;
-            }
-            agregadas++;
+        int cantidadEnCarrito = usuario.getCarrito().getCantidad(producto.getId());
+        int disponible = producto.getStock() - cantidadEnCarrito;
+        if (cantidad > disponible) {
+            JOptionPane.showMessageDialog(this,
+                    "Solo hay " + disponible + " unidad(es) disponible(s) para agregar.",
+                    "Stock insuficiente", JOptionPane.WARNING_MESSAGE);
+            return;
         }
 
-        if (agregadas == 0) {
+        for (int i = 0; i < cantidad; i++) {
+            usuario.getCarrito().agregarProducto(producto);
+        }
+
+        if (cantidad == 0) {
             JOptionPane.showMessageDialog(this, "No hay stock suficiente para ese producto.", "Stock insuficiente",
                     JOptionPane.WARNING_MESSAGE);
         } else {
             JOptionPane.showMessageDialog(this,
-                    "Se agregaron " + agregadas + " unidad(es) de " + producto.getNombre() + " al carrito.",
+                "Se agregaron " + cantidad + " unidad(es) de " + producto.getNombre() + " al carrito.",
                     "Producto agregado", JOptionPane.INFORMATION_MESSAGE);
         }
 
