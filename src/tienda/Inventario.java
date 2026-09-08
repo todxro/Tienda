@@ -53,7 +53,6 @@ public class Inventario {
     }
 
     public ArrayList<Producto> getListaProductos() {
-        cargarDesdeArchivo();
         return listaProductos;
     }
     public void ordenarPor(int opcion, boolean ascendente){
