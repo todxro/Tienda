@@ -57,7 +57,7 @@ public class VentanaAdmin extends JFrame {
     }
 
     public void actualizarVista() {
-        StringBuilder sb = new StringBuilder("=== INVENTARIO (ADMIN) ===\n\n");
+        StringBuilder sb = new StringBuilder("INVENTARIO (ADMIN)\n\n");
         for (Producto p : inventario.getListaProductos()) {
             sb.append(p).append("\n");
         }
