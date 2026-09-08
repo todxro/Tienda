@@ -5,7 +5,7 @@ import java.util.Comparator;
 
 public class Inventario {
     private ArrayList<Producto> listaProductos;
-    private final String RUTA_ARCHIVO = "inventario.txt";
+    private static final String RUTA_ARCHIVO = "inventario.csv";
 
     public Inventario() {
         this.listaProductos = new ArrayList<>();
@@ -44,6 +44,7 @@ public class Inventario {
     }
 
     public Producto buscarProducto(String id) {
+        cargarDesdeArchivo();
         for (Producto p : listaProductos) {
             if (p.getId().equalsIgnoreCase(id)) {
                 return p;
@@ -53,6 +54,7 @@ public class Inventario {
     }
 
     public ArrayList<Producto> getListaProductos() {
+        cargarDesdeArchivo();
         return listaProductos;
     }
     public void ordenarPor(int opcion, boolean ascendente){
@@ -199,9 +201,14 @@ public class Inventario {
     //cambiar metodo inventario
     public void guardarEnArchivo() {
         try (BufferedWriter bw = new BufferedWriter(new FileWriter(RUTA_ARCHIVO))) {
+            bw.write("id,nombre,precio,stock,categoria");
+            bw.newLine();
             for (Producto p : listaProductos) {
-                // Formato: ID;Nombre;Precio;Stock
-                bw.write(p.getId() + ";" + p.getNombre() + ";" + p.getPrecio() + ";" + p.getStock());
+                bw.write(campoCsv(p.getId()) + ","
+                        + campoCsv(p.getNombre()) + ","
+                        + p.getPrecio() + ","
+                        + p.getStock() + ","
+                        + campoCsv(p.getCategoria()));
                 bw.newLine();
             }
         } catch (IOException e) {
@@ -211,7 +218,6 @@ public class Inventario {
 
     private void cargarDesdeArchivo() {
         File archivo = new File(RUTA_ARCHIVO);
-        listaProductos.clear();
 
         // si no existe, crear inventario vacio
         if (!archivo.exists()) {
@@ -219,22 +225,24 @@ public class Inventario {
             return;
         }
 
+        ArrayList<Producto> productosArchivo = new ArrayList<>();
         try (BufferedReader br = new BufferedReader(new FileReader(archivo))) {
             String linea;
             while ((linea = br.readLine()) != null) {
-                if (linea.trim().isEmpty()) {
+                if (linea.trim().isEmpty() || linea.toLowerCase().startsWith("id,")) {
                     continue;
                 }
-                String[] datos = linea.split(";");
+                String[] datos = separarCsv(linea);
                 if (datos.length >= 4) {
                     try {
                         String id = datos[0];
                         String nombre = datos[1];
                         double precio = Double.parseDouble(datos[2]);
                         int stock = Integer.parseInt(datos[3]);
-                        String categoria = (datos.length == 5) ? datos[4] : "Sin Categoría";
+                        String categoria = (datos.length >= 5 && !datos[4].isEmpty())
+                                ? datos[4] : "Sin Categoría";
                         
-                        listaProductos.add(new Producto(id, nombre, precio, stock, categoria));
+                        productosArchivo.add(new Producto(id, nombre, precio, stock, categoria));
                     } catch (NumberFormatException e) {
                         // evitamos que el programa muera si hay una letra en lugar de un numero
                     }
@@ -242,7 +250,64 @@ public class Inventario {
             }
         } catch (IOException e) {
             System.out.println("Error al cargar inventario: " + e.getMessage());
-            listaProductos.clear(); // mantiene vacio si hay error grave
+            return;
         }
+
+        for (Producto productoArchivo : productosArchivo) {
+            Producto productoActual = buscarProductoEnLista(productoArchivo.getId());
+            if (productoActual == null) {
+                listaProductos.add(productoArchivo);
+            } else {
+                productoActual.setStock(productoArchivo.getStock());
+                productoActual.setPrecio(productoArchivo.getPrecio());
+                productoActual.setCategoria(productoArchivo.getCategoria());
+            }
+        }
+
+        listaProductos.removeIf(productoActual -> buscarProductoEnLista(productoActual.getId(), productosArchivo) == null);
+    }
+
+    private Producto buscarProductoEnLista(String id) {
+        return buscarProductoEnLista(id, listaProductos);
+    }
+
+    private Producto buscarProductoEnLista(String id, ArrayList<Producto> productos) {
+        for (Producto producto : productos) {
+            if (producto.getId().equalsIgnoreCase(id)) {
+                return producto;
+            }
+        }
+        return null;
+    }
+
+    private String campoCsv(String valor) {
+        String campo = valor == null ? "" : valor.replace("\"", "\"\"");
+        return "\"" + campo + "\"";
+    }
+
+    private String[] separarCsv(String linea) {
+        ArrayList<String> campos = new ArrayList<>();
+        StringBuilder campo = new StringBuilder();
+        boolean entreComillas = false;
+
+        for (int i = 0; i < linea.length(); i++) {
+            char caracter = linea.charAt(i);
+            if (caracter == '"') {
+                if (entreComillas && i + 1 < linea.length() && linea.charAt(i + 1) == '"') {
+                    campo.append('"');
+                    i++;
+                } else {
+                    entreComillas = !entreComillas;
+                }
+            } else if (caracter == ',' && !entreComillas) {
+                campos.add(campo.toString().trim());
+                campo.setLength(0);
+            } else {
+                campo.append(caracter);
+            }
+        }
+
+        campos.add(campo.toString().trim());
+        return campos.toArray(new String[0]);
     }
 }
