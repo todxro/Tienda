@@ -22,9 +22,10 @@ public class VentanaAdmin extends JFrame {
         areaTexto.setEditable(false);
         add(new JScrollPane(areaTexto), BorderLayout.CENTER);
 
-        JPanel panelControles = new JPanel(new GridLayout(3, 2, 5, 5));
+        JPanel panelControles = new JPanel(new GridLayout(4, 2, 5, 5));
         // campos para ingresar un producto
         JTextField txtNombre = new JTextField();
+        JTextField txtPrecio = new JTextField();
         JTextField txtCantidad = new JTextField();
         // botones de acciones del administrador
         JButton btnAgregar = new JButton("Agregar Producto");
@@ -33,6 +34,8 @@ public class VentanaAdmin extends JFrame {
         // agregar botones a pantalla
         panelControles.add(new JLabel(" Nombre:"));
         panelControles.add(txtNombre);
+        panelControles.add(new JLabel(" Precio:"));
+        panelControles.add(txtPrecio);
         panelControles.add(new JLabel(" Cantidad:"));
         panelControles.add(txtCantidad);
         panelControles.add(btnAgregar);
@@ -50,19 +53,21 @@ public class VentanaAdmin extends JFrame {
         btnAgregar.addActionListener(e -> {
             String nombre = txtNombre.getText();
             try {
+                double precio = Double.parseDouble(txtPrecio.getText());
                 int cantidad = Integer.parseInt(txtCantidad.getText());
-                if (nombre.isBlank() || cantidad < 0) {
+                if (nombre.isBlank() || precio < 0 || cantidad < 0) {
                     throw new IllegalArgumentException();
                 }
 
                 String newId = inventario.generarNuevoId();
-                inventario.agregarProducto(new Producto(newId, nombre, 15000, cantidad, "BASE"));
+                inventario.agregarProducto(new Producto(newId, nombre, precio, cantidad, "BASE"));
                 actualizarVista();
                 txtNombre.setText("");
+                txtPrecio.setText("");
                 txtCantidad.setText("");
             } catch (IllegalArgumentException ex) {
                 JOptionPane.showMessageDialog(this,
-                        "Ingresa un nombre y una cantidad entera no negativa.",
+                        "Ingresa un nombre un precio valido y una cantidad entera no negativa.",
                         "Datos inválidos", JOptionPane.WARNING_MESSAGE);
             }
         });
