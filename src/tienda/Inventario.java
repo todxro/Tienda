@@ -82,6 +82,12 @@ public class Inventario {
         // entrega la lista de productos
         return listaProductos;
     }
+
+    public void recargarDesdeArchivo() {
+        this.listaProductos.clear();
+        cargarDesdeArchivo();
+    }
+
     public void ordenarPor(int opcion, boolean ascendente){
         // selecciona el criterio para ordenar
         Comparator<Producto> comparador = null;
@@ -249,6 +255,9 @@ public class Inventario {
     private void cargarDesdeArchivo() {
         // lee los productos guardados en el archivo
         File archivo = new File(RUTA_ARCHIVO);
+
+        // limpia la memoria antes de recargar desde el archivo para evitar duplicados
+        listaProductos.clear();
 
         // crea un archivo vacio si no existe
         if (!archivo.exists()) {

@@ -1,8 +1,8 @@
 package tienda;
 
+import java.awt.*;
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
-import java.awt.*;
 
 public class VentanaUsuario extends JFrame {
     private static final Color AZUL_MARINO = new Color(27, 42, 107); //azul marino
@@ -66,6 +66,7 @@ public class VentanaUsuario extends JFrame {
         JTextField campoBuscar = new JTextField(15);
         JButton btnBuscar = new JButton("Buscar");
         JButton btnRefrescar = new JButton("Ver todo");
+        JButton btnActualizar = new JButton("Actualizar");
 
         btnBuscar.addActionListener(e -> {
             String texto = campoBuscar.getText().trim();
@@ -74,11 +75,16 @@ public class VentanaUsuario extends JFrame {
             }
         });
         btnRefrescar.addActionListener(e -> actualizarVista());
+        btnActualizar.addActionListener(e -> {
+            inventario.recargarDesdeArchivo();
+            actualizarVista();
+        });
 
         busqueda.add(labelBuscar);
         busqueda.add(campoBuscar);
         busqueda.add(btnBuscar);
         busqueda.add(btnRefrescar);
+        busqueda.add(btnActualizar);
 
         panel.add(busqueda, BorderLayout.EAST);
         return panel;
@@ -197,6 +203,14 @@ public class VentanaUsuario extends JFrame {
         } catch (NumberFormatException e) {
             JOptionPane.showMessageDialog(this, "La cantidad debe ser un número mayor a 0.", "Cantidad inválida",
                     JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        if (cantidad > producto.getStock()) {
+            JOptionPane.showMessageDialog(this,
+                    "La cantidad ingresada es mayor a la que existe. Solo hay " + producto.getStock() + " unidad(es) disponibles de "
+                            + producto.getNombre() + ".",
+                    "Cantidad inválida", JOptionPane.WARNING_MESSAGE);
             return;
         }
 
