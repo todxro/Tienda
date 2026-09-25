@@ -49,6 +49,24 @@ public class Inventario {
         return false;
     }
 
+    public boolean actualizarProducto(String id, String nombre, double precio, int stock, String categoria) {
+        if (nombre == null || nombre.isBlank() || precio < 0 || stock < 0) {
+            return false;
+        }
+
+        Producto producto = buscarProducto(id);
+        if (producto == null) {
+            return false;
+        }
+
+        producto.setNombre(nombre.trim());
+        producto.setPrecio(precio);
+        producto.setStock(stock);
+        producto.setCategoria(categoria == null || categoria.isBlank() ? "BASE" : categoria.trim());
+        guardarEnArchivo();
+        return true;
+    }
+
     public Producto buscarProducto(String id) {
         // busca un producto por su id
         cargarDesdeArchivo();
