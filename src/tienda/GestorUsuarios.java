@@ -10,14 +10,18 @@ import java.util.ArrayList;
 import java.util.Date;
 
 public class GestorUsuarios {
+    // archivo donde se guardan los usuarios
     private static final String RUTA_ARCHIVO = "usuarios.csv";
+    // usuarios cargados en memoria
     private final ArrayList<Usuario> usuarios = new ArrayList<>();
 
+    // carga los usuarios al iniciar el gestor
     public GestorUsuarios() {
         cargarUsuarios();
     }
 
     public Usuario autenticar(String correo, String contrasenia) {
+        // busca un usuario con las credenciales recibidas
         for (Usuario usuario : usuarios) {
             if (usuario.getCorreo().equalsIgnoreCase(correo)
                     && usuario.getContrasenia().equals(contrasenia)) {
@@ -28,6 +32,7 @@ public class GestorUsuarios {
     }
 
     public boolean registrar(String nombre, String apellido, String correo, String contrasenia) {
+        // valida los datos antes de registrar la cuenta
         if (nombre.isBlank() || apellido.isBlank() || correo.isBlank() || contrasenia.isBlank()
                 || correo.contains(",") || contrasenia.contains(",")) {
             return false;
@@ -39,11 +44,13 @@ public class GestorUsuarios {
 
         usuarios.add(new Usuario(nombre, apellido, contrasenia, "", "", "", "", correo, 0,
                 new Date(), ""));
+        // guarda el nuevo usuario en el archivo
         guardarUsuarios();
         return true;
     }
 
     private Usuario autenticarPorCorreo(String correo) {
+        // evita registrar correos repetidos
         for (Usuario usuario : usuarios) {
             if (usuario.getCorreo().equalsIgnoreCase(correo)) {
                 return usuario;
@@ -53,13 +60,14 @@ public class GestorUsuarios {
     }
 
     private void cargarUsuarios() {
+        // lee los usuarios guardados en el archivo
         File archivo = new File(RUTA_ARCHIVO);
         if (!archivo.exists()) {
             return;
         }
         try (BufferedReader lector = new BufferedReader(new FileReader(archivo))) {
             String linea;
-            boolean primeraLinea = true; // para saltarse el encabezado al leer
+            boolean primeraLinea = true; // salta el encabezado al leer
             while ((linea = lector.readLine()) != null) {
                 if (primeraLinea) {
                     primeraLinea = false;
@@ -83,8 +91,9 @@ public class GestorUsuarios {
     }
 
     private void guardarUsuarios() {
+        // escribe todos los usuarios en el archivo
         try (BufferedWriter escritor = new BufferedWriter(new FileWriter(RUTA_ARCHIVO))) {
-            escritor.write("nombre,apellido,correo,contrasenia"); // encabezado del csv
+            escritor.write("nombre,apellido,correo,contrasenia"); // escribe el encabezado del csv
             escritor.newLine();
             for (Usuario usuario : usuarios) {
                 escritor.write(escaparCSV(usuario.getNombre()) + ","
@@ -98,7 +107,7 @@ public class GestorUsuarios {
         }
     }
 
-    // lee una linea csv campo por campo, soporta campos con comillas
+    // separa una linea csv respetando las comillas
     private String[] parsearLineaCSV(String linea) {
         ArrayList<String> campos = new ArrayList<>();
         StringBuilder campoActual = new StringBuilder();
@@ -124,7 +133,7 @@ public class GestorUsuarios {
         return campos.toArray(new String[0]);
     }
 
-    // si el campo tiene coma o comillas lo envuelve entre comillas para el csv
+    // protege los campos especiales del csv
     private String escaparCSV(String valor) {
         if (valor == null)
             return "";

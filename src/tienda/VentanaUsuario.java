@@ -4,25 +4,16 @@ import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 
-<<<<<<< Updated upstream
 public class VentanaUsuario extends JFrame {
-=======
-public class VentanaUsuario extends JFrame { //
-    private static final Color AZUL_MARINO = new Color(27, 42, 107); //crea el color azul marino (etiqueta)
-    private static final Color DORADO      = new Color(242, 183, 5); //crea el color dorado (etiqueta)
-    private static final Color FONDO       = new Color(247, 247, 247); //crea el color del fondo (etiqueta)
-    private static final Color TEXTO       = new Color(34, 34, 34);    //crea el color para el texto (etiqueta)
-    private static final Color BLANCO      = Color.WHITE; //crea el color blanco (etiqueta)
+    private static final Color AZUL_MARINO = new Color(27, 42, 107); //azul marino
+    private static final Color DORADO      = new Color(242, 183, 5); //dorado
+    private static final Color FONDO       = new Color(247, 247, 247); //fondo gris claro
+    private static final Color TEXTO       = new Color(34, 34, 34);    //texto oscuro
+    private static final Color BLANCO      = Color.WHITE;
 
-    // usuario que esta usando la ventana
->>>>>>> Stashed changes
     private final Usuario usuario;
     private final Inventario inventario;
-<<<<<<< Updated upstream
-    private final JTextArea areaTexto;
-    private final JTextField campoIdProducto;
-    private final JTextField campoCantidad;
-=======
+
     // componentes de la interfaz
     private JTable tablaCatalogo;
     private DefaultTableModel modeloCatalogo;
@@ -30,7 +21,6 @@ public class VentanaUsuario extends JFrame { //
     private DefaultTableModel modeloCarrito;
     private JTextField campoCantidad;
     private JLabel labelTotal;
->>>>>>> Stashed changes
 
     public VentanaUsuario() {
         this(null);
@@ -43,92 +33,24 @@ public class VentanaUsuario extends JFrame { //
         this.inventario = new Inventario();
 
         setTitle("Catálogo - " + this.usuario.getNombre());
-<<<<<<< Updated upstream
-        setSize(700, 500);
-=======
         setSize(1000, 650);
->>>>>>> Stashed changes
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         getContentPane().setBackground(FONDO);
         setLayout(new BorderLayout(12, 12));
 
-<<<<<<< Updated upstream
-        JPanel panelControl = new JPanel(new GridLayout(2, 3, 8, 8));
-        panelControl.add(new JLabel("ID del producto:"));
-        campoIdProducto = new JTextField();
-        panelControl.add(campoIdProducto);
-
-        panelControl.add(new JLabel("Cantidad:"));
-        campoCantidad = new JTextField("1");
-        panelControl.add(campoCantidad);
-
-        JButton btnAgregar = new JButton("Agregar al carrito");
-        btnAgregar.addActionListener(e -> agregarAlCarrito());
-        panelControl.add(btnAgregar);
-
-        JButton btnComprar = new JButton("Comprar");
-        btnComprar.addActionListener(e -> comprarProductos());
-        panelControl.add(btnComprar);
-
-        add(panelControl, BorderLayout.NORTH);
-
-        areaTexto = new JTextArea();
-        areaTexto.setEditable(false);
-        areaTexto.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 13));
-        add(new JScrollPane(areaTexto), BorderLayout.CENTER);
-
-        JButton btnRefrescar = new JButton("Actualizar / Refrescar catálogo");
-        btnRefrescar.addActionListener(e -> actualizarVista());
-
-        // buscador por nombre
-        JTextField campoBuscar = new JTextField(10);
-        JButton btnBuscar = new JButton("Buscar Nombre");
-
-        // si escribo algo busca en el inventario y actualiza la lista
-        btnBuscar.addActionListener(e -> {
-            String texto = campoBuscar.getText().trim();
-            if (!texto.isEmpty()) {
-                StringBuilder sb = new StringBuilder("Productos encontrados:\n\n");
-                for (Producto p : inventario.buscarPorNombre(texto)) {
-                    sb.append(p).append("\n");
-                }
-                areaTexto.setText(sb.toString());
-            }
-        });
-        
-        // panel inferior de botones
-        JPanel panelAbajo = new JPanel();
-        panelAbajo.add(new JLabel("Buscar:"));
-        panelAbajo.add(campoBuscar);
-        panelAbajo.add(btnBuscar);
-        panelAbajo.add(btnRefrescar);
-
-        add(panelAbajo, BorderLayout.SOUTH);
-=======
         add(crearPanelBusqueda(), BorderLayout.NORTH);
         add(crearPanelCatalogo(), BorderLayout.CENTER);
         add(crearPanelCarrito(), BorderLayout.SOUTH);
->>>>>>> Stashed changes
 
         actualizarVista();
         setLocationRelativeTo(null);
     }
 
-<<<<<<< Updated upstream
-    private void agregarAlCarrito() {
-        String id = campoIdProducto.getText().trim();
-        if (id.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Debes ingresar el ID del producto.", "Falta información",
-                    JOptionPane.WARNING_MESSAGE);
-            return;
-        }
-=======
     // construye la barra superior azul con el título y el buscador
     private JPanel crearPanelBusqueda() {
         JPanel panel = new JPanel(new BorderLayout(10, 10));
         panel.setBackground(AZUL_MARINO);
         panel.setBorder(BorderFactory.createEmptyBorder(12, 16, 12, 16));
->>>>>>> Stashed changes
 
         JLabel titulo = new JLabel("CATÁLOGO");
         titulo.setFont(new Font("SansSerif", Font.BOLD, 20));
@@ -235,6 +157,7 @@ public class VentanaUsuario extends JFrame { //
         panel.add(scrollCarrito, BorderLayout.CENTER);
         return panel;
     }
+
     // le da el mismo estilo a los botones para no repetir codigo
     private void estilizarBoton(JButton boton, Color fondo, Color texto) {
         boton.setBackground(fondo);
@@ -253,6 +176,7 @@ public class VentanaUsuario extends JFrame { //
             });
         }
     }
+
     private void agregarAlCarrito() {
         // toma el producto seleccionado en la tabla en vez de un id escrito a mano
         int fila = tablaCatalogo.getSelectedRow();
@@ -276,6 +200,7 @@ public class VentanaUsuario extends JFrame { //
             return;
         }
 
+        // cuenta cuantas unidades se lograron agregar de verdad, por si el stock no alcanza
         int agregadas = 0;
         for (int i = 0; i < cantidad; i++) {
             if (!usuario.getCarrito().agregarProducto(producto)) {
@@ -284,7 +209,6 @@ public class VentanaUsuario extends JFrame { //
             agregadas++;
         }
 
-<<<<<<< Updated upstream
         if (agregadas == 0) {
             JOptionPane.showMessageDialog(this, "No hay stock suficiente para ese producto.", "Stock insuficiente",
                     JOptionPane.WARNING_MESSAGE);
@@ -294,11 +218,10 @@ public class VentanaUsuario extends JFrame { //
                     "Producto agregado", JOptionPane.INFORMATION_MESSAGE);
         }
 
-=======
->>>>>>> Stashed changes
         campoCantidad.setText("1");
         actualizarVista();
     }
+
     private void comprarProductos() {
         if (usuario.getCarrito().getProductos().isEmpty()) {
             JOptionPane.showMessageDialog(this, "El carrito está vacío.", "Compra",
@@ -320,12 +243,8 @@ public class VentanaUsuario extends JFrame { //
                 JOptionPane.INFORMATION_MESSAGE);
         actualizarVista();
     }
+
     public void actualizarVista() {
-<<<<<<< Updated upstream
-        StringBuilder sb = new StringBuilder("=== CATÁLOGO (USUARIO) ===\n\n");
-        for (Producto p : inventario.getListaProductos()) {
-            sb.append(p).append("\n");
-=======
         // vuelve a llenar la tabla del catalogo con lo que hay en inventario
         cargarProductosEnTabla(inventario.getListaProductos());
 
@@ -337,17 +256,12 @@ public class VentanaUsuario extends JFrame { //
                     usuario.getCarrito().getCantidad(p.getId()),
                     "$" + usuario.getCarrito().calcularSubtotal(p.getId())
             });
->>>>>>> Stashed changes
         }
 
         labelTotal.setText("TOTAL: $" + usuario.getCarrito().calcularTotal());
     }
-<<<<<<< Updated upstream
 
-    // MAIN INDIVIDUAL PARA EJECUTAR SOLO EL USUARIO
-=======
     // inicia la ventana de usuario
->>>>>>> Stashed changes
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
             new VentanaLogin().setVisible(true);

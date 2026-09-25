@@ -2,12 +2,14 @@ package tienda;
 
 
 public class Producto {
+    // datos que identifican al producto
     private String id;
     private String nombre;
     private double precio;
     private int stock;
     private String categoria;
 
+    // crea un producto con su stock inicial
     public Producto(String id, String nombre, double precio, int stock, String categoria) {
         this.id = id;
         this.nombre = nombre;
@@ -21,6 +23,7 @@ public class Producto {
     public double getPrecio() { return precio; }
     public int getStock() { return stock; }
     public void setStock(int stock) {
+        // evita guardar un stock negativo
         if (stock >= 0) {
             this.stock = stock;
         } else {
@@ -29,6 +32,7 @@ public class Producto {
     }
         public String getCategoria() { return categoria; }
     public void setPrecio(double precio) { 
+        // evita guardar un precio negativo
         if (precio >= 0) {
         this.precio = precio; 
         }
