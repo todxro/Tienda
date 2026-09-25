@@ -89,7 +89,10 @@ public class VentanaAdmin extends JFrame {
         restricciones.gridy = fila;
         restricciones.anchor = GridBagConstraints.WEST;
         restricciones.insets = new Insets(4, 0, 4, 0);
-        panel.add(new JLabel(etiqueta), restricciones);
+        JLabel etiquetaComponente = new JLabel(etiqueta);
+        etiquetaComponente.setFont(etiquetaComponente.getFont().deriveFont(Font.BOLD));
+        campo.setFont(campo.getFont().deriveFont(Font.BOLD));
+        panel.add(etiquetaComponente, restricciones);
 
         restricciones.gridx = 1;
         restricciones.fill = GridBagConstraints.HORIZONTAL;
@@ -104,6 +107,7 @@ public class VentanaAdmin extends JFrame {
         restricciones.gridwidth = 2;
         restricciones.fill = GridBagConstraints.HORIZONTAL;
         restricciones.insets = new Insets(6, 0, 0, 0);
+        boton.setFont(boton.getFont().deriveFont(Font.BOLD));
         panel.add(boton, restricciones);
     }
 
