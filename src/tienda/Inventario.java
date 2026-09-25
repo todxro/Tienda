@@ -80,7 +80,6 @@ public class Inventario {
 
     public ArrayList<Producto> getListaProductos() {
         // entrega la lista de productos
-        cargarDesdeArchivo();
         return listaProductos;
     }
     public void ordenarPor(int opcion, boolean ascendente){
