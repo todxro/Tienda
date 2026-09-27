@@ -20,6 +20,8 @@ public class VentanaUsuario extends JFrame {
     private JTable tablaCarrito;
     private DefaultTableModel modeloCarrito;
     private JTextField campoCantidad;
+    private JLabel labelSubtotal;
+    private JLabel labelIVA;
     private JLabel labelTotal;
 
     public VentanaUsuario() {
@@ -167,6 +169,14 @@ public class VentanaUsuario extends JFrame {
         btnComprar.addActionListener(e -> comprarProductos());
         controles.add(btnComprar);
 
+        labelSubtotal = new JLabel("Subtotal: $0");
+        labelSubtotal.setForeground(TEXTO_CLARO);
+        controles.add(labelSubtotal);
+
+        labelIVA = new JLabel("IVA (19%): $0");
+        labelIVA.setForeground(TEXTO_CLARO);
+        controles.add(labelIVA);
+
         labelTotal = new JLabel("TOTAL: $0");
         labelTotal.setFont(new Font("SansSerif", Font.BOLD, 16));
         labelTotal.setForeground(DORADO);
@@ -285,8 +295,9 @@ public class VentanaUsuario extends JFrame {
             });
         }
 
-        labelTotal.setText("TOTAL: $" + usuario.getCarrito().calcularTotal());
-    }
+        labelSubtotal.setText("Subtotal: $" + usuario.getCarrito().calcularSubtotalCarrito());
+        labelIVA.setText("IVA (19%): $" + usuario.getCarrito().calcularIVA());
+        labelTotal.setText("TOTAL: $" + usuario.getCarrito().calcularTotal());    }
 
     // inicia la ventana de usuario
     public static void main(String[] args) {

@@ -93,20 +93,33 @@ public double calcularSubtotal(String id) {
 }
 
 
-// calcula el precio total del carrito
-public double calcularTotal() {
+// tasa de iva en chile es de 19%
+private static final double TASA_IVA = 0.19;
 
-    double total = 0;
+// suma los subtotales de todos los productos del carrito, sin IVA
+public double calcularSubtotalCarrito() {
+
+    double subtotal = 0;
 
     for (int i = 0; i < productos.size(); i++) {
 
-        double subtotal = productos.get(i).getPrecio()
+        double subtotalProducto = productos.get(i).getPrecio()
                 * cantidades.get(i);
 
-        total += subtotal;
+        subtotal += subtotalProducto;
     }
 
-    return total;
+    return subtotal;
+}
+
+// calcula el monto de IVA sobre el subtotal del carrito
+public double calcularIVA() {
+    return calcularSubtotalCarrito() * TASA_IVA;
+}
+
+// calcula el precio total del carrito (subtotal + IVA)
+public double calcularTotal() {
+    return calcularSubtotalCarrito() + calcularIVA();
 }
 
 
