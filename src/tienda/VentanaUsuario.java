@@ -5,12 +5,12 @@ import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 
 public class VentanaUsuario extends JFrame {
-    private static final Color AZUL_MARINO = new Color(27, 42, 107); //azul marino
-    private static final Color DORADO      = new Color(242, 183, 5); //dorado
-    private static final Color FONDO       = new Color(247, 247, 247); //fondo gris claro
-    private static final Color TEXTO       = new Color(34, 34, 34);    //texto oscuro
+    private static final Color AZUL_MARINO = new Color(46, 31, 71);   //morado oscuro (header y acentos)
+    private static final Color DORADO      = new Color(232, 184, 75); //dorado (acento principal)
+    private static final Color FONDO       = new Color(18, 16, 27);   //fondo casi negro
+    private static final Color TEXTO       = new Color(61, 43, 0);    //texto oscuro (sobre dorado)
+    private static final Color TEXTO_CLARO = new Color(217, 210, 232);//texto claro (sobre fondo oscuro)
     private static final Color BLANCO      = Color.WHITE;
-
     private final Usuario usuario;
     private final Inventario inventario;
 
@@ -20,6 +20,8 @@ public class VentanaUsuario extends JFrame {
     private JTable tablaCarrito;
     private DefaultTableModel modeloCarrito;
     private JTextField campoCantidad;
+    private JLabel labelSubtotal;
+    private JLabel labelIVA;
     private JLabel labelTotal;
 
     public VentanaUsuario() {
@@ -64,7 +66,9 @@ public class VentanaUsuario extends JFrame {
         labelBuscar.setForeground(BLANCO);
 
         JTextField campoBuscar = new JTextField(15);
-        JButton btnBuscar = new JButton("Buscar");
+        campoBuscar.setBackground(new Color(28, 24, 43));
+        campoBuscar.setForeground(TEXTO_CLARO);
+        campoBuscar.setCaretColor(TEXTO_CLARO);        JButton btnBuscar = new JButton("Buscar");
         JButton btnRefrescar = new JButton("Ver todo");
         JButton btnActualizar = new JButton("Actualizar");
 
@@ -111,9 +115,13 @@ public class VentanaUsuario extends JFrame {
         tablaCatalogo.getTableHeader().setForeground(BLANCO);
         tablaCatalogo.setSelectionBackground(DORADO);
         tablaCatalogo.setSelectionForeground(TEXTO);
-        tablaCatalogo.setGridColor(new Color(220, 220, 220));
+        tablaCatalogo.setGridColor(new Color(60, 52, 80));
+        tablaCatalogo.setBackground(new Color(28, 24, 43));
+        tablaCatalogo.setForeground(TEXTO_CLARO);
 
-        panel.add(new JScrollPane(tablaCatalogo), BorderLayout.CENTER);
+        JScrollPane scrollCatalogo = new JScrollPane(tablaCatalogo);
+        scrollCatalogo.getViewport().setBackground(new Color(28, 24, 43));
+        panel.add(scrollCatalogo, BorderLayout.CENTER);
         return panel;
     }
 
@@ -134,15 +142,22 @@ public class VentanaUsuario extends JFrame {
         tablaCarrito.setRowHeight(24);
         tablaCarrito.getTableHeader().setBackground(AZUL_MARINO);
         tablaCarrito.getTableHeader().setForeground(BLANCO);
+        tablaCarrito.setBackground(new Color(28, 24, 43));
+        tablaCarrito.setForeground(TEXTO_CLARO);
         JScrollPane scrollCarrito = new JScrollPane(tablaCarrito);
+        scrollCarrito.getViewport().setBackground(new Color(28, 24, 43));
         scrollCarrito.setPreferredSize(new Dimension(0, 140));
 
         JPanel controles = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 8));
         controles.setBackground(FONDO);
 
-        controles.add(new JLabel("Cantidad:"));
+        JLabel labelCantidad = new JLabel("Cantidad:");
+        labelCantidad.setForeground(TEXTO_CLARO);
+        controles.add(labelCantidad);
         campoCantidad = new JTextField("1", 4);
-        controles.add(campoCantidad);
+        campoCantidad.setBackground(new Color(28, 24, 43));
+        campoCantidad.setForeground(TEXTO_CLARO);
+        campoCantidad.setCaretColor(TEXTO_CLARO);        controles.add(campoCantidad);
 
         JButton btnAgregar = new JButton("Agregar al carrito");
         estilizarBoton(btnAgregar, DORADO, TEXTO);
@@ -154,9 +169,17 @@ public class VentanaUsuario extends JFrame {
         btnComprar.addActionListener(e -> comprarProductos());
         controles.add(btnComprar);
 
+        labelSubtotal = new JLabel("Subtotal: $0");
+        labelSubtotal.setForeground(TEXTO_CLARO);
+        controles.add(labelSubtotal);
+
+        labelIVA = new JLabel("IVA (19%): $0");
+        labelIVA.setForeground(TEXTO_CLARO);
+        controles.add(labelIVA);
+
         labelTotal = new JLabel("TOTAL: $0");
         labelTotal.setFont(new Font("SansSerif", Font.BOLD, 16));
-        labelTotal.setForeground(AZUL_MARINO);
+        labelTotal.setForeground(DORADO);
         controles.add(labelTotal);
 
         panel.add(controles, BorderLayout.NORTH);
@@ -272,8 +295,9 @@ public class VentanaUsuario extends JFrame {
             });
         }
 
-        labelTotal.setText("TOTAL: $" + usuario.getCarrito().calcularTotal());
-    }
+        labelSubtotal.setText("Subtotal: $" + usuario.getCarrito().calcularSubtotalCarrito());
+        labelIVA.setText("IVA (19%): $" + usuario.getCarrito().calcularIVA());
+        labelTotal.setText("TOTAL: $" + usuario.getCarrito().calcularTotal());    }
 
     // inicia la ventana de usuario
     public static void main(String[] args) {
