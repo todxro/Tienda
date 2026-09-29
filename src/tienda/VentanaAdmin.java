@@ -20,6 +20,7 @@ import javax.swing.ListSelectionModel;
 import javax.swing.SwingUtilities;
 import javax.swing.table.DefaultTableModel;
 
+
 public class VentanaAdmin extends JFrame {
     private static final Color AZUL_MARINO = new Color(46, 31, 71);
     private static final Color DORADO = new Color(232, 184, 75);
