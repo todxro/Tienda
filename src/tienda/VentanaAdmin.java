@@ -21,6 +21,12 @@ import javax.swing.SwingUtilities;
 import javax.swing.table.DefaultTableModel;
 
 public class VentanaAdmin extends JFrame {
+    private static final Color AZUL_MARINO = new Color(46, 31, 71);
+    private static final Color DORADO = new Color(232, 184, 75);
+    private static final Color FONDO = new Color(18, 16, 27);
+    private static final Color SUPERFICIE = new Color(28, 24, 43);
+    private static final Color TEXTO = new Color(61, 43, 0);
+    private static final Color TEXTO_CLARO = new Color(217, 210, 232);
     private final Inventario inventario;
     private final DefaultTableModel modeloTabla;
     private final JTable tablaProductos;
@@ -34,6 +40,7 @@ public class VentanaAdmin extends JFrame {
 
         setTitle("Panel Administrador");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        getContentPane().setBackground(FONDO);
         setLayout(new BorderLayout(12, 12));
 
         modeloTabla = new DefaultTableModel(
@@ -48,6 +55,13 @@ public class VentanaAdmin extends JFrame {
         tablaProductos.setAutoCreateRowSorter(true);
         tablaProductos.setRowHeight(28);
         tablaProductos.getTableHeader().setFont(new Font(Font.SANS_SERIF, Font.BOLD, 14));
+        tablaProductos.getTableHeader().setBackground(AZUL_MARINO);
+        tablaProductos.getTableHeader().setForeground(Color.WHITE);
+        tablaProductos.setBackground(SUPERFICIE);
+        tablaProductos.setForeground(TEXTO_CLARO);
+        tablaProductos.setSelectionBackground(DORADO);
+        tablaProductos.setSelectionForeground(TEXTO);
+        tablaProductos.setGridColor(new Color(60, 52, 80));
 
         txtNombre = new JTextField();
         txtPrecio = new JTextField();
@@ -55,6 +69,7 @@ public class VentanaAdmin extends JFrame {
         txtCategoria = new JTextField();
 
         JPanel panelControles = new JPanel(new GridBagLayout());
+        panelControles.setBackground(FONDO);
         panelControles.setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
         panelControles.setPreferredSize(new Dimension(265, 0));
         agregarCampo(panelControles, "Nombre:", txtNombre, 0);
@@ -72,7 +87,10 @@ public class VentanaAdmin extends JFrame {
         agregarBoton(panelControles, btnValorTotal, 7);
 
         JPanel panelStock = new JPanel(new BorderLayout(12, 12));
-        panelStock.add(new JScrollPane(tablaProductos), BorderLayout.CENTER);
+        panelStock.setBackground(FONDO);
+        JScrollPane scrollProductos = new JScrollPane(tablaProductos);
+        scrollProductos.getViewport().setBackground(SUPERFICIE);
+        panelStock.add(scrollProductos, BorderLayout.CENTER);
         panelStock.add(panelControles, BorderLayout.WEST);
 
         JLabel tituloAdmin = new JLabel("Admin");
@@ -82,9 +100,9 @@ public class VentanaAdmin extends JFrame {
 
         JPanel barraNavegacion = new JPanel(new BorderLayout(16, 0));
         barraNavegacion.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(79, 127, 169)),
+                BorderFactory.createLineBorder(AZUL_MARINO),
                 BorderFactory.createEmptyBorder(8, 12, 8, 12)));
-        barraNavegacion.setBackground(new Color(30, 75, 125));
+            barraNavegacion.setBackground(AZUL_MARINO);
         estilizarBotonStock(btnStock);
         barraNavegacion.add(tituloAdmin, BorderLayout.WEST);
         barraNavegacion.add(btnStock, BorderLayout.EAST);
@@ -109,8 +127,8 @@ public class VentanaAdmin extends JFrame {
     private void estilizarBotonStock(JButton boton) {
         boton.setFont(new Font("SansSerif", Font.BOLD, 12));
         boton.setFocusPainted(false);
-        boton.setBackground(new Color(232, 184, 75));
-        boton.setForeground(new Color(61, 43, 0));
+        boton.setBackground(DORADO);
+        boton.setForeground(TEXTO);
         boton.setBorder(BorderFactory.createEmptyBorder(8, 14, 8, 14));
     }
 
@@ -121,7 +139,11 @@ public class VentanaAdmin extends JFrame {
         restricciones.anchor = GridBagConstraints.WEST;
         restricciones.insets = new Insets(4, 0, 4, 0);
         JLabel etiquetaComponente = new JLabel(etiqueta);
+        etiquetaComponente.setForeground(TEXTO_CLARO);
         campo.setFont(campo.getFont().deriveFont(Font.BOLD));
+        campo.setBackground(SUPERFICIE);
+        campo.setForeground(TEXTO_CLARO);
+        campo.setCaretColor(TEXTO_CLARO);
         panel.add(etiquetaComponente, restricciones);
 
         restricciones.gridx = 1;
@@ -138,6 +160,10 @@ public class VentanaAdmin extends JFrame {
         restricciones.fill = GridBagConstraints.HORIZONTAL;
         restricciones.insets = new Insets(6, 0, 0, 0);
         boton.setFont(boton.getFont().deriveFont(Font.BOLD));
+        boton.setBackground(DORADO);
+        boton.setForeground(TEXTO);
+        boton.setFocusPainted(false);
+        boton.setBorder(BorderFactory.createEmptyBorder(8, 14, 8, 14));
         panel.add(boton, restricciones);
     }
 
