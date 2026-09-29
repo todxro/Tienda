@@ -11,8 +11,11 @@ public class VentanaUsuario extends JFrame {
     private static final Color TEXTO       = new Color(61, 43, 0);    //texto oscuro (sobre dorado)
     private static final Color TEXTO_CLARO = new Color(217, 210, 232);//texto claro (sobre fondo oscuro)
     private static final Color BLANCO      = Color.WHITE;
-    private final Usuario usuario;
+    private Usuario usuario;
     private final Inventario inventario;
+    private final GestorUsuarios gestorUsuarios;
+    private final CardLayout tarjetas = new CardLayout();
+    private final JPanel paneles = new JPanel(tarjetas);
 
     // componentes de la interfaz
     private JTable tablaCatalogo;
@@ -29,23 +32,112 @@ public class VentanaUsuario extends JFrame {
     }
 
     public VentanaUsuario(Usuario usuario) {
-        this.usuario = usuario != null ? usuario
-                : new Usuario("Usuario", "Demo", "1234", "", "", "", "",
-                        "demo@tienda.cl", 0, new java.util.Date(), "11111111-1");
+        this.usuario = usuario;
         this.inventario = new Inventario();
+        this.gestorUsuarios = new GestorUsuarios();
 
-        setTitle("Catálogo - " + this.usuario.getNombre());
+        setTitle("Tienda");
         setSize(1000, 650);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        getContentPane().setBackground(FONDO);
-        setLayout(new BorderLayout(12, 12));
-
-        add(crearPanelBusqueda(), BorderLayout.NORTH);
-        add(crearPanelCatalogo(), BorderLayout.CENTER);
-        add(crearPanelCarrito(), BorderLayout.SOUTH);
-
-        actualizarVista();
+        setContentPane(paneles);
+        if (usuario == null) {
+            paneles.add(crearPanelLogin(), "login");
+            tarjetas.show(paneles, "login");
+        } else {
+            mostrarCatalogo();
+        }
         setLocationRelativeTo(null);
+    }
+
+    private JPanel crearPanelLogin() {
+        JPanel panel = new JPanel(new GridBagLayout());
+        panel.setBackground(FONDO);
+        JPanel formulario = new JPanel(new BorderLayout(8, 12));
+        formulario.setBackground(FONDO);
+        formulario.setBorder(BorderFactory.createEmptyBorder(24, 28, 24, 28));
+
+        JLabel titulo = new JLabel("Iniciar sesión", SwingConstants.CENTER);
+        titulo.setFont(new Font("SansSerif", Font.BOLD, 22));
+        titulo.setForeground(DORADO);
+        JTextField campoCorreo = new JTextField(20);
+        JPasswordField campoContrasenia = new JPasswordField(20);
+        JLabel labelCorreo = new JLabel("Correo:");
+        JLabel labelContrasenia = new JLabel("Contraseña:");
+        labelCorreo.setForeground(TEXTO_CLARO);
+        labelContrasenia.setForeground(TEXTO_CLARO);
+        JPanel campos = new JPanel(new GridLayout(2, 2, 8, 8));
+        campos.setBackground(FONDO);
+        campos.add(labelCorreo);
+        campos.add(campoCorreo);
+        campos.add(labelContrasenia);
+        campos.add(campoContrasenia);
+
+        JButton iniciar = new JButton("Iniciar sesión");
+        JButton crearCuenta = new JButton("Crear cuenta");
+        estilizarBoton(iniciar, DORADO, TEXTO);
+        estilizarBoton(crearCuenta, AZUL_MARINO, BLANCO);
+        JPanel botones = new JPanel(new GridLayout(1, 2, 8, 8));
+        botones.setBackground(FONDO);
+        botones.add(iniciar);
+        botones.add(crearCuenta);
+        formulario.add(titulo, BorderLayout.NORTH);
+        formulario.add(campos, BorderLayout.CENTER);
+        formulario.add(botones, BorderLayout.SOUTH);
+        panel.add(formulario);
+
+        iniciar.addActionListener(e -> {
+            Usuario autenticado = gestorUsuarios.autenticar(campoCorreo.getText().trim(),
+                    new String(campoContrasenia.getPassword()));
+            if (autenticado == null) {
+                JOptionPane.showMessageDialog(this, "Correo o contraseña incorrectos.",
+                        "Acceso denegado", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+            usuario = autenticado;
+            mostrarCatalogo();
+        });
+        crearCuenta.addActionListener(e -> mostrarRegistro(campoCorreo, campoContrasenia));
+        getRootPane().setDefaultButton(iniciar);
+        return panel;
+    }
+
+    private void mostrarRegistro(JTextField campoCorreo, JPasswordField campoContrasenia) {
+        JTextField nombre = new JTextField();
+        JTextField apellido = new JTextField();
+        JTextField correo = new JTextField();
+        JPasswordField contrasenia = new JPasswordField();
+        Object[] campos = {"Nombre:", nombre, "Apellido:", apellido, "Correo:", correo,
+                "Contraseña:", contrasenia};
+        int resultado = JOptionPane.showConfirmDialog(this, campos, "Crear cuenta",
+                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+        if (resultado != JOptionPane.OK_OPTION) {
+            return;
+        }
+
+        boolean creada = gestorUsuarios.registrar(nombre.getText().trim(), apellido.getText().trim(),
+                correo.getText().trim(), new String(contrasenia.getPassword()));
+        if (creada) {
+            campoCorreo.setText(correo.getText().trim());
+            campoContrasenia.setText("");
+            JOptionPane.showMessageDialog(this, "Cuenta creada. Ahora puedes iniciar sesión.");
+        } else {
+            JOptionPane.showMessageDialog(this, "Completa todos los campos y usa un correo disponible.",
+                    "No se pudo crear la cuenta", JOptionPane.WARNING_MESSAGE);
+        }
+    }
+
+    private void mostrarCatalogo() {
+        setTitle("Catálogo - " + usuario.getNombre());
+        JPanel catalogo = new JPanel(new BorderLayout(12, 12));
+        catalogo.setBackground(FONDO);
+        catalogo.add(crearPanelBusqueda(), BorderLayout.NORTH);
+        catalogo.add(crearPanelCatalogo(), BorderLayout.CENTER);
+        catalogo.add(crearPanelCarrito(), BorderLayout.SOUTH);
+        paneles.add(catalogo, "catalogo");
+        tarjetas.show(paneles, "catalogo");
+        actualizarVista();
+        paneles.revalidate();
+        paneles.repaint();
     }
 
     // construye la barra superior azul con el título y el buscador
@@ -297,12 +389,10 @@ public class VentanaUsuario extends JFrame {
 
         labelSubtotal.setText("Subtotal: $" + usuario.getCarrito().calcularSubtotalCarrito());
         labelIVA.setText("IVA (19%): $" + usuario.getCarrito().calcularIVA());
-        labelTotal.setText("TOTAL: $" + usuario.getCarrito().calcularTotal());    }
+        labelTotal.setText("TOTAL: $" + usuario.getCarrito().calcularTotal());
+    }
 
-    // inicia la ventana de usuario
     public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> {
-            new VentanaLogin().setVisible(true);
-        });
+        SwingUtilities.invokeLater(() -> new VentanaUsuario().setVisible(true));
     }
 }
