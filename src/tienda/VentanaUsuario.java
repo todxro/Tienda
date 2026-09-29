@@ -276,8 +276,8 @@ public class VentanaUsuario extends JFrame {
         }
 
         inventario.guardarEnArchivo();
-        JOptionPane.showMessageDialog(this, "Compra realizada con éxito. Total: $" + total, "Compra exitosa",
-                JOptionPane.INFORMATION_MESSAGE);
+    JOptionPane.showMessageDialog(this, "Compra realizada con éxito. Total: $" + total, "Compra exitosa",
+        JOptionPane.INFORMATION_MESSAGE);
         actualizarVista();
     }
 

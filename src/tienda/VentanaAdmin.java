@@ -1,6 +1,7 @@
 package tienda;
 
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.GridBagConstraints;
@@ -47,12 +48,11 @@ public class VentanaAdmin extends JFrame {
         tablaProductos.setAutoCreateRowSorter(true);
         tablaProductos.setRowHeight(28);
         tablaProductos.getTableHeader().setFont(new Font(Font.SANS_SERIF, Font.BOLD, 14));
-        add(new JScrollPane(tablaProductos), BorderLayout.CENTER);
 
         txtNombre = new JTextField();
         txtPrecio = new JTextField();
         txtCantidad = new JTextField();
-        txtCategoria = new JTextField("BASE");
+        txtCategoria = new JTextField();
 
         JPanel panelControles = new JPanel(new GridBagLayout());
         panelControles.setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
@@ -70,7 +70,30 @@ public class VentanaAdmin extends JFrame {
         agregarBoton(panelControles, btnEditar, 5);
         agregarBoton(panelControles, btnBorrar, 6);
         agregarBoton(panelControles, btnValorTotal, 7);
-        add(panelControles, BorderLayout.WEST);
+
+        JPanel panelStock = new JPanel(new BorderLayout(12, 12));
+        panelStock.add(new JScrollPane(tablaProductos), BorderLayout.CENTER);
+        panelStock.add(panelControles, BorderLayout.WEST);
+
+        JLabel tituloAdmin = new JLabel("Admin");
+        tituloAdmin.setFont(new Font("SansSerif", Font.BOLD, 20));
+        tituloAdmin.setForeground(Color.WHITE);
+        JButton btnStock = new JButton("Stock");
+
+        JPanel barraNavegacion = new JPanel(new BorderLayout(16, 0));
+        barraNavegacion.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(79, 127, 169)),
+                BorderFactory.createEmptyBorder(8, 12, 8, 12)));
+        barraNavegacion.setBackground(new Color(30, 75, 125));
+        estilizarBotonStock(btnStock);
+        barraNavegacion.add(tituloAdmin, BorderLayout.WEST);
+        barraNavegacion.add(btnStock, BorderLayout.EAST);
+        btnStock.addActionListener(e -> {
+            inventario.recargarDesdeArchivo();
+            refrescarTabla();
+        });
+        add(barraNavegacion, BorderLayout.NORTH);
+        add(panelStock, BorderLayout.CENTER);
 
         tablaProductos.getSelectionModel().addListSelectionListener(e -> cargarSeleccion());
         btnAgregar.addActionListener(e -> agregarProducto());
@@ -83,6 +106,14 @@ public class VentanaAdmin extends JFrame {
         setExtendedState(JFrame.MAXIMIZED_BOTH);
     }
 
+    private void estilizarBotonStock(JButton boton) {
+        boton.setFont(new Font("SansSerif", Font.BOLD, 12));
+        boton.setFocusPainted(false);
+        boton.setBackground(new Color(232, 184, 75));
+        boton.setForeground(new Color(61, 43, 0));
+        boton.setBorder(BorderFactory.createEmptyBorder(8, 14, 8, 14));
+    }
+
     private void agregarCampo(JPanel panel, String etiqueta, JTextField campo, int fila) {
         GridBagConstraints restricciones = new GridBagConstraints();
         restricciones.gridx = 0;
@@ -90,7 +121,6 @@ public class VentanaAdmin extends JFrame {
         restricciones.anchor = GridBagConstraints.WEST;
         restricciones.insets = new Insets(4, 0, 4, 0);
         JLabel etiquetaComponente = new JLabel(etiqueta);
-        etiquetaComponente.setFont(etiquetaComponente.getFont().deriveFont(Font.BOLD));
         campo.setFont(campo.getFont().deriveFont(Font.BOLD));
         panel.add(etiquetaComponente, restricciones);
 
@@ -98,7 +128,7 @@ public class VentanaAdmin extends JFrame {
         restricciones.fill = GridBagConstraints.HORIZONTAL;
         restricciones.weightx = 1;
         panel.add(campo, restricciones);
-    }
+        }
 
     private void agregarBoton(JPanel panel, JButton boton, int fila) {
         GridBagConstraints restricciones = new GridBagConstraints();
@@ -210,7 +240,7 @@ public class VentanaAdmin extends JFrame {
         txtNombre.setText("");
         txtPrecio.setText("");
         txtCantidad.setText("");
-        txtCategoria.setText("BASE");
+        txtCategoria.setText("");
         tablaProductos.clearSelection();
     }
 
