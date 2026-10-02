@@ -254,11 +254,10 @@ public class VentanaUsuario extends JFrame {
                     "Se agregaron " + agregadas + " unidad(es) de " + producto.getNombre() + " al carrito.",
                     "Producto agregado", JOptionPane.INFORMATION_MESSAGE);
         }
-
+ 
         campoCantidad.setText("1");
         actualizarVista();
     }
-
     private void comprarProductos() {
         if (usuario.getCarrito().getProductos().isEmpty()) {
             JOptionPane.showMessageDialog(this, "El carrito está vacío.", "Compra",
@@ -266,7 +265,37 @@ public class VentanaUsuario extends JFrame {
             return;
         }
 
+        // extrae los datos
+        double subtotal = usuario.getCarrito().calcularSubtotalCarrito();
+        double iva = usuario.getCarrito().calcularIVA();
         double total = usuario.getCarrito().calcularTotal();
+
+        // construye el detalle 
+        StringBuilder detalles = new StringBuilder();
+        for (Producto p : usuario.getCarrito().getProductos()) {
+            int cant = usuario.getCarrito().getCantidad(p.getId());
+            detalles.append(cant).append("x ").append(p.getNombre()).append(" | ");
+        }
+
+        // crea el gestor y genera una nueva venta 
+        GestorVentas gestorVentas = new GestorVentas();
+        String idVenta = gestorVentas.generarIdVenta();
+        java.util.Date fechaActual = new java.util.Date(); 
+        String nombreCompleto = usuario.getNombre() + " " + usuario.getApellido();
+
+        Venta nuevaVenta = new Venta(
+            idVenta,
+            fechaActual,
+            usuario.getRut(),
+            nombreCompleto,
+            usuario.getCorreo(),
+            detalles.toString(),
+            subtotal,
+            iva,
+            total
+        );
+
+        // procesa la compra en el sistema 
         boolean compraExitosa = usuario.getCarrito().finalizarCompra();
 
         if (!compraExitosa) {
@@ -275,9 +304,12 @@ public class VentanaUsuario extends JFrame {
             return;
         }
 
+        // guarda la venta y el inventario actualizados 
+        gestorVentas.guardarVenta(nuevaVenta);
         inventario.guardarEnArchivo();
-    JOptionPane.showMessageDialog(this, "Compra realizada con éxito. Total: $" + total, "Compra exitosa",
-        JOptionPane.INFORMATION_MESSAGE);
+        
+        JOptionPane.showMessageDialog(this, "Compra realizada con éxito.\nID Venta: " + idVenta + "\nTotal: $" + total, "Compra exitosa",
+            JOptionPane.INFORMATION_MESSAGE);
         actualizarVista();
     }
 
@@ -298,7 +330,7 @@ public class VentanaUsuario extends JFrame {
         labelSubtotal.setText("Subtotal: $" + usuario.getCarrito().calcularSubtotalCarrito());
         labelIVA.setText("IVA (19%): $" + usuario.getCarrito().calcularIVA());
         labelTotal.setText("TOTAL: $" + usuario.getCarrito().calcularTotal());    }
-
+        
     // inicia la ventana de usuario
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
