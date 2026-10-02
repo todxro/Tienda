@@ -4,6 +4,7 @@ package tienda;
 import java.util.Date;
 
 public class Cuenta {
+    // datos generales de una cuenta
     private String nombre;
     private String apellido; 
     private String contrasenia;
@@ -16,6 +17,7 @@ public class Cuenta {
     private Date fechadeNacimiento;
     private String rut;
 
+    // crea una cuenta con sus datos personales
     public Cuenta(String nombre, String apellido, String contrasenia, String direccion, String pais, String comuna, String region, String correo, int numeroDeTelefono, Date fechadeNacimiento, String rut) {
         this.nombre = nombre;
         this.apellido = apellido;
@@ -31,10 +33,12 @@ public class Cuenta {
     }
 
     public String getNombre() {
+        // entrega el nombre de la cuenta
         return nombre;
     }
 
     public void setNombre(String nombre) {
+        // cambia el nombre de la cuenta
         this.nombre = nombre;
     }
 

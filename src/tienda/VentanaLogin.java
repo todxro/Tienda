@@ -11,10 +11,13 @@ import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
 
 public class VentanaLogin extends JFrame {
+    // gestor que valida y registra usuarios
     private final GestorUsuarios gestorUsuarios;
+    // campos para ingresar las credenciales
     private final JTextField campoCorreo = new JTextField();
     private final JPasswordField campoContrasenia = new JPasswordField();
 
+    // crea la ventana de inicio de sesion
     public VentanaLogin() {
         gestorUsuarios = new GestorUsuarios();
         setTitle("Iniciar sesión");
@@ -30,16 +33,19 @@ public class VentanaLogin extends JFrame {
 
         JButton iniciar = new JButton("Iniciar sesión");
         JButton crearCuenta = new JButton("Crear cuenta");
+        // agrega botones al formulario
         formulario.add(iniciar);
         formulario.add(crearCuenta);
         add(formulario);
 
+        // conecta los botones con sus acciones
         iniciar.addActionListener(e -> iniciarSesion());
         crearCuenta.addActionListener(e -> mostrarRegistro());
         getRootPane().setDefaultButton(iniciar);
     }
 
     private void iniciarSesion() {
+        // valida las credenciales ingresadas
         Usuario usuario = gestorUsuarios.autenticar(campoCorreo.getText().trim(),
                 new String(campoContrasenia.getPassword()));
         if (usuario == null) {
@@ -53,6 +59,7 @@ public class VentanaLogin extends JFrame {
     }
 
     private void mostrarRegistro() {
+        // muestra el formulario de registro
         JTextField nombre = new JTextField();
         JTextField apellido = new JTextField();
         JTextField correo = new JTextField();
@@ -79,6 +86,7 @@ public class VentanaLogin extends JFrame {
     }
 
     public static void main(String[] args) {
+        // inicia la ventana de login
         SwingUtilities.invokeLater(() -> new VentanaLogin().setVisible(true));
     }
 }
