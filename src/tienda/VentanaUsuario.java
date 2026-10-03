@@ -5,11 +5,11 @@ import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 
 public class VentanaUsuario extends JFrame {
-    private static final Color AZUL_MARINO = new Color(46, 31, 71);   //morado oscuro (header y acentos)
-    private static final Color DORADO      = new Color(232, 184, 75); //dorado (acento principal)
+    private static final Color AZUL_MARINO = new Color(46, 31, 71);   //morado oscuro 
+    private static final Color DORADO      = new Color(232, 184, 75); //dorado 
     private static final Color FONDO       = new Color(18, 16, 27);   //fondo casi negro
-    private static final Color TEXTO       = new Color(61, 43, 0);    //texto oscuro (sobre dorado)
-    private static final Color TEXTO_CLARO = new Color(217, 210, 232);//texto claro (sobre fondo oscuro)
+    private static final Color TEXTO       = new Color(61, 43, 0);    //texto oscuro 
+    private static final Color TEXTO_CLARO = new Color(217, 210, 232);//texto claro 
     private static final Color BLANCO      = Color.WHITE;
     private Usuario usuario;
     private final Inventario inventario;

@@ -31,7 +31,7 @@ public class VentanaAdmin extends JFrame {
 
     public VentanaAdmin() {
         inventario = new Inventario();
-        setTitle("Panel Administrador");
+        setTitle("Panel Administrador - Tienda");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLayout(new BorderLayout(14, 14));
 
