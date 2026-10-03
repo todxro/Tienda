@@ -38,11 +38,10 @@ public class VentanaAdmin extends JFrame {
 
     public VentanaAdmin() {
         inventario = new Inventario();
-
-        setTitle("Panel Administrador");
+        setTitle("Panel Administrador - Tienda");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         getContentPane().setBackground(FONDO);
-        setLayout(new BorderLayout(12, 12));
+        setLayout(new BorderLayout(14, 14));
 
         modeloTabla = new DefaultTableModel(
                 new Object[] { "ID", "Producto", "Precio", "Stock", "Categoría" }, 0) {
