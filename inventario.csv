@@ -1,13 +1,13 @@
 id,nombre,precio,stock,categoria
-"P02","Carta Pikachu",320000,3,"Pokemon"
-P03,Sobre Pokemon TCG,7900,20,Pokemon
-P04,Sobre Chaos Rising,7990,25,Pokemon
-P05,Lata Pokeball con Sobres,19990,10,Pokemon
-P06,Mazo Mega Lucario,44990,8,Pokemon
-P07,Caja Entrenador Elite,64990,5,Pokemon
-P08,Pack de Sobres Ascended Heroes,44990,6,Pokemon
-P09,Coleccion Dia Pokemon,20990,12,Pokemon
-P10,Coleccion Pin Ascended Heroes,34990,7,Pokemon
-P11,Coleccion Premium Bellibolt,44990,4,Pokemon
-P12,Kit Entrenador,29990,15,Pokemon
-P13,Caja de Sobres Perfect Order,199990,2,Pokemon
+"P02","Carta Pikachu",320000.0,3,"Pokemon"
+"P03","Sobre Pokemon TCG",7900.0,20,"Pokemon"
+"P04","Sobre Chaos Rising",7990.0,25,"Pokemon"
+"P05","Lata Pokeball con Sobres",19990.0,10,"Pokemon"
+"P06","Mazo Mega Lucario",44990.0,8,"Pokemon"
+"P07","Caja Entrenador Elite",64990.0,5,"Pokemon"
+"P08","Pack de Sobres Ascended Heroes",44990.0,6,"Pokemon"
+"P09","Coleccion Dia Pokemon",20990.0,12,"Pokemon"
+"P10","Coleccion Pin Ascended Heroes",34990.0,7,"Pokemon"
+"P11","Coleccion Premium Bellibolt",44990.0,3,"Pokemon"
+"P12","Kit Entrenador",29990.0,15,"Pokemon"
+"P13","Caja de Sobres Perfect Order",199990.0,2,"Pokemon"
