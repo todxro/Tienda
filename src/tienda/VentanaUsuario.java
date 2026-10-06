@@ -163,6 +163,7 @@ public class VentanaUsuario extends JFrame {
         campoBuscar.setCaretColor(TEXTO_CLARO);        JButton btnBuscar = new JButton("Buscar");
         JButton btnRefrescar = new JButton("Ver todo");
         JButton btnActualizar = new JButton("Actualizar");
+        
 
         btnBuscar.addActionListener(e -> {
             String texto = campoBuscar.getText().trim();
