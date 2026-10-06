@@ -8,14 +8,10 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
-<<<<<<< HEAD
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.util.List;
-=======
 import java.util.ArrayList;
-import java.util.UUID;
->>>>>>> 38cd8c36d3c0090ec0114b60d0267e0e8edec492
+import java.util.List;
 
 public class GestorVentas {
     private static final String RUTA_ARCHIVO = "ventas.csv";
