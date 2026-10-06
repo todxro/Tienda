@@ -1,2 +1,1 @@
-idVenta,fecha,rutCliente,nombreCliente,correoCliente,detalleProductos,subtotal,iva,total
-V-097a9efa,2026-10-06 16:31:39,,v v,v,"1x Coleccion Premium Bellibolt | ",44990.0,8548.1,53538.1
+numeroTicket,fecha,rutCliente,nombreCliente,correoCliente,detalleProductos,subtotal,iva,total

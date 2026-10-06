@@ -31,10 +31,41 @@ public class GestorUsuarios {
         return null;
     }
 
-    public boolean registrar(String nombre, String apellido, String correo, String contrasenia) {
+    public boolean registrar(String nombre, String apellido, String rut, String correo, String contrasenia) {
         // valida los datos antes de registrar la cuenta
-        if (nombre.isBlank() || apellido.isBlank() || correo.isBlank() || contrasenia.isBlank()
-                || correo.contains(",") || contrasenia.contains(",")) {
+        if (nombre.isBlank()) {
+            return false;
+        }
+        if (apellido.isBlank()) {
+            return false;
+        }
+        if (rut.isBlank()) {
+            return false;
+        }
+        for (int i = 0; i < rut.length(); i++) {
+            if (rut.charAt(i) < '0' || rut.charAt(i) > '9') {
+                return false;
+            }
+        }
+        if (correo.isBlank()) {
+            return false;
+        }
+        if (correo.contains(",")) {
+            return false;
+        }
+        if (correo.contains(" ")) {
+            return false;
+        }
+        if (!correo.contains("@")) {
+            return false;
+        }
+        if (!correo.toLowerCase().endsWith(".com")) {
+            return false;
+        }
+        if (contrasenia.isBlank()) {
+            return false;
+        }
+        if (contrasenia.contains(",")) {
             return false;
         }
 
@@ -43,7 +74,7 @@ public class GestorUsuarios {
         }
 
         usuarios.add(new Usuario(nombre, apellido, contrasenia, "", "", "", "", correo, 0,
-                new Date(), ""));
+                new Date(), rut));
         // guarda el nuevo usuario en el archivo
         guardarUsuarios();
         return true;
@@ -76,13 +107,14 @@ public class GestorUsuarios {
                 if (linea.trim().isEmpty())
                     continue;
                 String[] datos = parsearLineaCSV(linea); // lee la linea respetando comillas
-                if (datos.length == 4) {
+                if (datos.length == 4 || datos.length == 5) {
                     String nombre = datos[0];
                     String apellido = datos[1];
                     String correo = datos[2];
                     String contrasenia = datos[3];
+                    String rut = datos.length == 5 ? datos[4] : "";
                     usuarios.add(new Usuario(nombre, apellido, contrasenia,
-                            "", "", "", "", correo, 0, new Date(), ""));
+                            "", "", "", "", correo, 0, new Date(), rut));
                 }
             }
         } catch (IOException e) {
@@ -93,13 +125,14 @@ public class GestorUsuarios {
     private void guardarUsuarios() {
         // escribe todos los usuarios en el archivo
         try (BufferedWriter escritor = new BufferedWriter(new FileWriter(RUTA_ARCHIVO))) {
-            escritor.write("nombre,apellido,correo,contrasenia"); // escribe el encabezado del csv
+            escritor.write("nombre,apellido,correo,contrasenia,rut"); // escribe el encabezado del csv
             escritor.newLine();
             for (Usuario usuario : usuarios) {
                 escritor.write(escaparCSV(usuario.getNombre()) + ","
                         + escaparCSV(usuario.getApellido()) + ","
                         + escaparCSV(usuario.getCorreo()) + ","
-                        + escaparCSV(usuario.getContrasenia()));
+                        + escaparCSV(usuario.getContrasenia()) + ","
+                        + escaparCSV(usuario.getRut()));
                 escritor.newLine();
             }
         } catch (IOException e) {

@@ -1,7 +1,12 @@
 package tienda;
 
 import java.awt.*;
+import java.io.IOException;
 import javax.swing.*;
+import javax.swing.text.AbstractDocument;
+import javax.swing.text.AttributeSet;
+import javax.swing.text.BadLocationException;
+import javax.swing.text.DocumentFilter;
 import javax.swing.table.DefaultTableModel;
 
 public class VentanaUsuario extends JFrame {
@@ -12,6 +17,7 @@ public class VentanaUsuario extends JFrame {
     private static final Color TEXTO_CLARO = new Color(217, 210, 232);//texto claro
     private static final Color BLANCO      = Color.WHITE;
     private Usuario usuario;
+    private Carrito carrito;
     private final Inventario inventario;
     private final GestorUsuarios gestorUsuarios;
     private final CardLayout tarjetas = new CardLayout();
@@ -26,6 +32,7 @@ public class VentanaUsuario extends JFrame {
     private JLabel labelSubtotal;
     private JLabel labelIVA;
     private JLabel labelTotal;
+    private JButton botonIniciarSesion;
 
     public VentanaUsuario() {
         this(null);
@@ -33,6 +40,7 @@ public class VentanaUsuario extends JFrame {
 
     public VentanaUsuario(Usuario usuario) {
         this.usuario = usuario;
+        this.carrito = usuario == null ? new Carrito() : usuario.getCarrito();
         this.inventario = new Inventario();
         this.gestorUsuarios = new GestorUsuarios();
 
@@ -40,13 +48,10 @@ public class VentanaUsuario extends JFrame {
         setSize(1000, 650);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setContentPane(paneles);
-        if (usuario == null) {
-            paneles.add(crearPanelLogin(), "login");
-            tarjetas.show(paneles, "login");
-        } else {
-            mostrarCatalogo();
-        }
+        paneles.add(crearPanelLogin(), "login");
+        mostrarCatalogo();
         setLocationRelativeTo(null);
+        setExtendedState(JFrame.MAXIMIZED_BOTH);
     }
 
     private JPanel crearPanelLogin() {
@@ -74,12 +79,15 @@ public class VentanaUsuario extends JFrame {
 
         JButton iniciar = new JButton("Iniciar sesión");
         JButton crearCuenta = new JButton("Crear cuenta");
+        JButton continuarComoInvitado = new JButton("Continuar como invitado");
         estilizarBoton(iniciar, DORADO, TEXTO);
         estilizarBoton(crearCuenta, AZUL_MARINO, BLANCO);
-        JPanel botones = new JPanel(new GridLayout(1, 2, 8, 8));
+        estilizarBoton(continuarComoInvitado, AZUL_MARINO, BLANCO);
+        JPanel botones = new JPanel(new GridLayout(1, 3, 8, 8));
         botones.setBackground(FONDO);
         botones.add(iniciar);
         botones.add(crearCuenta);
+        botones.add(continuarComoInvitado);
         formulario.add(titulo, BorderLayout.NORTH);
         formulario.add(campos, BorderLayout.CENTER);
         formulario.add(botones, BorderLayout.SOUTH);
@@ -97,6 +105,11 @@ public class VentanaUsuario extends JFrame {
             mostrarCatalogo();
         });
         crearCuenta.addActionListener(e -> mostrarRegistro(campoCorreo, campoContrasenia));
+        continuarComoInvitado.addActionListener(e -> {
+            getRootPane().setDefaultButton(null);
+            tarjetas.show(paneles, "catalogo");
+        });
+        botonIniciarSesion = iniciar;
         getRootPane().setDefaultButton(iniciar);
         return panel;
     }
@@ -104,9 +117,25 @@ public class VentanaUsuario extends JFrame {
     private void mostrarRegistro(JTextField campoCorreo, JPasswordField campoContrasenia) {
         JTextField nombre = new JTextField();
         JTextField apellido = new JTextField();
+        JTextField rut = new JTextField();
+        ((AbstractDocument) rut.getDocument()).setDocumentFilter(new DocumentFilter() {
+            @Override
+            public void insertString(FilterBypass bypass, int offset, String texto, AttributeSet atributos)
+                    throws BadLocationException {
+                replace(bypass, offset, 0, texto, atributos);
+            }
+
+            @Override
+            public void replace(FilterBypass bypass, int offset, int longitud, String texto,
+                    AttributeSet atributos) throws BadLocationException {
+                if (texto == null || texto.chars().allMatch(caracter -> caracter >= '0' && caracter <= '9')) {
+                    bypass.replace(offset, longitud, texto, atributos);
+                }
+            }
+        });
         JTextField correo = new JTextField();
         JPasswordField contrasenia = new JPasswordField();
-        Object[] campos = {"Nombre:", nombre, "Apellido:", apellido, "Correo:", correo,
+        Object[] campos = {"Nombre:", nombre, "Apellido:", apellido, "RUT:", rut, "Correo:", correo,
                 "Contraseña:", contrasenia};
         int resultado = JOptionPane.showConfirmDialog(this, campos, "Crear cuenta",
                 JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
@@ -115,19 +144,20 @@ public class VentanaUsuario extends JFrame {
         }
 
         boolean creada = gestorUsuarios.registrar(nombre.getText().trim(), apellido.getText().trim(),
-                correo.getText().trim(), new String(contrasenia.getPassword()));
+                rut.getText().trim(), correo.getText().trim(), new String(contrasenia.getPassword()));
         if (creada) {
             campoCorreo.setText(correo.getText().trim());
             campoContrasenia.setText("");
             JOptionPane.showMessageDialog(this, "Cuenta creada. Ahora puedes iniciar sesión.");
         } else {
-            JOptionPane.showMessageDialog(this, "Completa todos los campos y usa un correo disponible.",
+            JOptionPane.showMessageDialog(this,
+                    "Completa todos los campos, usa un correo con formato usuario@dominio.com y verifica que esté disponible.",
                     "No se pudo crear la cuenta", JOptionPane.WARNING_MESSAGE);
         }
     }
 
     private void mostrarCatalogo() {
-        setTitle("Catálogo - " + usuario.getNombre());
+        setTitle(usuario == null ? "Catálogo - Invitado" : "Catálogo - " + usuario.getNombre());
         JPanel catalogo = new JPanel(new BorderLayout(12, 12));
         catalogo.setBackground(FONDO);
         catalogo.add(crearPanelBusqueda(), BorderLayout.NORTH);
@@ -135,6 +165,7 @@ public class VentanaUsuario extends JFrame {
         catalogo.add(crearPanelCarrito(), BorderLayout.SOUTH);
         paneles.add(catalogo, "catalogo");
         tarjetas.show(paneles, "catalogo");
+        getRootPane().setDefaultButton(null);
         actualizarVista();
         paneles.revalidate();
         paneles.repaint();
@@ -181,6 +212,20 @@ public class VentanaUsuario extends JFrame {
         busqueda.add(btnBuscar);
         busqueda.add(btnRefrescar);
         busqueda.add(btnActualizar);
+
+        if (usuario == null) {
+            JButton btnIniciarSesion = new JButton("Iniciar sesión");
+            estilizarBoton(btnIniciarSesion, DORADO, TEXTO);
+            btnIniciarSesion.addActionListener(e -> {
+                tarjetas.show(paneles, "login");
+                getRootPane().setDefaultButton(botonIniciarSesion);
+            });
+            busqueda.add(btnIniciarSesion);
+        } else {
+            JLabel saludo = new JLabel("Hola, " + usuario.getNombre());
+            saludo.setForeground(BLANCO);
+            busqueda.add(saludo);
+        }
 
         panel.add(busqueda, BorderLayout.EAST);
         return panel;
@@ -332,7 +377,7 @@ public class VentanaUsuario extends JFrame {
         // cuenta cuantas unidades se lograron agregar de verdad, por si el stock no alcanza
         int agregadas = 0;
         for (int i = 0; i < cantidad; i++) {
-            if (!usuario.getCarrito().agregarProducto(producto)) {
+            if (!carrito.agregarProducto(producto)) {
                 break;
             }
             agregadas++;
@@ -341,47 +386,45 @@ public class VentanaUsuario extends JFrame {
         if (agregadas == 0) {
             JOptionPane.showMessageDialog(this, "No hay stock suficiente para ese producto.", "Stock insuficiente",
                     JOptionPane.WARNING_MESSAGE);
-        } else {
-            JOptionPane.showMessageDialog(this,
-                    "Se agregaron " + agregadas + " unidad(es) de " + producto.getNombre() + " al carrito.",
-                    "Producto agregado", JOptionPane.INFORMATION_MESSAGE);
         }
 
         campoCantidad.setText("1");
         actualizarVista();
     }
 
-private void comprarProductos() {
-        if (usuario.getCarrito().getProductos().isEmpty()) {
+    private void comprarProductos() {
+        if (carrito.getProductos().isEmpty()) {
             JOptionPane.showMessageDialog(this, "El carrito está vacío.", "Compra",
                     JOptionPane.WARNING_MESSAGE);
             return;
         }
 
+        String rutCliente = usuario == null ? "" : usuario.getRut();
+
         // extrae los datos
-        double subtotal = usuario.getCarrito().calcularSubtotalCarrito();
-        double iva = usuario.getCarrito().calcularIVA();
-        double total = usuario.getCarrito().calcularTotal();
+        double subtotal = carrito.calcularSubtotalCarrito();
+        double iva = carrito.calcularIVA();
+        double total = carrito.calcularTotal();
 
         // construye el detalle 
         StringBuilder detalles = new StringBuilder();
-        for (Producto p : usuario.getCarrito().getProductos()) {
-            int cant = usuario.getCarrito().getCantidad(p.getId());
+        for (Producto p : carrito.getProductos()) {
+            int cant = carrito.getCantidad(p.getId());
             detalles.append(cant).append("x ").append(p.getNombre()).append(" | ");
         }
 
         // crea el gestor y genera una nueva venta 
         GestorVentas gestorVentas = new GestorVentas();
-        String idVenta = gestorVentas.generarIdVenta();
+        String numeroTicket = usuario == null ? "" : usuario.getRut();
         java.util.Date fechaActual = new java.util.Date(); 
-        String nombreCompleto = usuario.getNombre() + " " + usuario.getApellido();
+        String nombreCompleto = usuario == null ? "Invitado" : usuario.getNombre() + " " + usuario.getApellido();
 
         Venta nuevaVenta = new Venta(
-            idVenta,
+            numeroTicket,
             fechaActual,
-            usuario.getRut(),
+            rutCliente,
             nombreCompleto,
-            usuario.getCorreo(),
+            usuario == null ? "" : usuario.getCorreo(),
             detalles.toString(),
             subtotal,
             iva,
@@ -389,39 +432,51 @@ private void comprarProductos() {
         );
 
         // procesa la compra en el sistema 
-        boolean compraExitosa = usuario.getCarrito().finalizarCompra();
+        boolean compraExitosa = carrito.finalizarCompra();
 
         if (!compraExitosa) {
             JOptionPane.showMessageDialog(this, "No hay stock suficiente para completar la compra.", "Compra fallida",
                     JOptionPane.ERROR_MESSAGE);
             return;
         }
-
+        // guarda la venta y el inventario actualizados
         // guarda la venta y el inventario actualizados 
-        gestorVentas.guardarVenta(nuevaVenta);
+        try {
+            if (usuario == null) {
+                numeroTicket = gestorVentas.guardarVentaInvitado(nuevaVenta);
+            } else {
+                gestorVentas.guardarVenta(nuevaVenta);
+            }
+        } catch (IOException e) {
+            JOptionPane.showMessageDialog(this, "No se pudo guardar la venta: " + e.getMessage(),
+                    "Error al guardar la venta", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
         inventario.guardarEnArchivo();
         
-        JOptionPane.showMessageDialog(this, "Compra realizada con éxito.\nID Venta: " + idVenta + "\nTotal: $" + total, "Compra exitosa",
+        JOptionPane.showMessageDialog(this, "Tu ticket de venta es el número: " + numeroTicket,
+                "Ticket de venta",
             JOptionPane.INFORMATION_MESSAGE);
         actualizarVista();
     }
+
     public void actualizarVista() {
         // vuelve a llenar la tabla del catalogo con lo que hay en inventario
         cargarProductosEnTabla(inventario.getListaProductos());
 
         // vuelve a llenar la tabla del carrito
         modeloCarrito.setRowCount(0);
-        for (Producto p : usuario.getCarrito().getProductos()) {
+        for (Producto p : carrito.getProductos()) {
             modeloCarrito.addRow(new Object[]{
                     p.getNombre(),
-                    usuario.getCarrito().getCantidad(p.getId()),
-                    "$" + usuario.getCarrito().calcularSubtotal(p.getId())
+                    carrito.getCantidad(p.getId()),
+                    "$" + carrito.calcularSubtotal(p.getId())
             });
         }
 
-        labelSubtotal.setText("Subtotal: $" + usuario.getCarrito().calcularSubtotalCarrito());
-        labelIVA.setText("IVA (19%): $" + usuario.getCarrito().calcularIVA());
-        labelTotal.setText("TOTAL: $" + usuario.getCarrito().calcularTotal());
+        labelSubtotal.setText("Subtotal: $" + carrito.calcularSubtotalCarrito());
+        labelIVA.setText("IVA (19%): $" + carrito.calcularIVA());
+        labelTotal.setText("TOTAL: $" + carrito.calcularTotal());
     }
 
     public static void main(String[] args) {
