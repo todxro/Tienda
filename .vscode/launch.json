@@ -1,0 +1,22 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "java",
+      "name": "VentanaAdmin",
+      "request": "launch",
+      "mainClass": "tienda.VentanaAdmin",
+      "projectName": "Tienda_4c68dbd1"
+    },
+    {
+      "name": "Run Tienda (VentanaAdmin)",
+      "type": "java",
+      "request": "launch",
+      "mainClass": "tienda.VentanaAdmin",
+      "projectName": "Tienda",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "classpath": "${workspaceFolder}/bin"
+    }
+  ]
+}

@@ -111,6 +111,36 @@ public class GestorVentas {
 
         return historial;
     }
+
+    public ArrayList<String[]> obtenerTodasLasVentas() throws IOException {
+        ArrayList<String[]> ventas = new ArrayList<>();
+        File archivo = new File(RUTA_ARCHIVO);
+
+        if (!archivo.exists()) {
+            return ventas;
+        }
+
+        try (BufferedReader lector = new BufferedReader(new FileReader(archivo))) {
+            String linea;
+            int numeroLinea = 0;
+
+            while ((linea = lector.readLine()) != null) {
+                numeroLinea++;
+                if (numeroLinea == 1 || linea.trim().isEmpty()) {
+                    continue;
+                }
+
+                String[] datos = parsearLineaCSV(linea);
+                if (datos.length < 9) {
+                    throw new IOException("La venta en la línea " + numeroLinea + " está incompleta.");
+                }
+                ventas.add(datos);
+            }
+        }
+
+        return ventas;
+    }
+
     private String[] parsearLineaCSV(String linea) {
         ArrayList<String> campos = new ArrayList<>();
         StringBuilder campoActual = new StringBuilder();

@@ -1,8 +1,10 @@
 package tienda;
 
 import java.awt.BorderLayout;
+import java.awt.CardLayout;
 import java.awt.Color;
 import java.awt.Dimension;
+import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
@@ -35,6 +37,9 @@ public class VentanaAdmin extends JFrame {
     private final JTextField txtPrecio;
     private final JTextField txtCantidad;
     private final JTextField txtCategoria;
+    private final CardLayout disenoVistas;
+    private final JPanel panelVistas;
+    private final DefaultTableModel modeloVentas;
 
     public VentanaAdmin() {
         inventario = new Inventario();
@@ -93,25 +98,63 @@ public class VentanaAdmin extends JFrame {
         panelStock.add(scrollProductos, BorderLayout.CENTER);
         panelStock.add(panelControles, BorderLayout.WEST);
 
+        modeloVentas = new DefaultTableModel(
+                new Object[] { "Ticket", "Fecha", "RUT", "Cliente", "Correo", "Productos", "Subtotal", "IVA",
+                        "Total" }, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+        };
+        JTable tablaVentas = new JTable(modeloVentas);
+        tablaVentas.setAutoCreateRowSorter(true);
+        tablaVentas.setRowHeight(28);
+        tablaVentas.getTableHeader().setFont(new Font(Font.SANS_SERIF, Font.BOLD, 14));
+        tablaVentas.getTableHeader().setBackground(AZUL_MARINO);
+        tablaVentas.getTableHeader().setForeground(Color.WHITE);
+        tablaVentas.setBackground(SUPERFICIE);
+        tablaVentas.setForeground(TEXTO_CLARO);
+        tablaVentas.setSelectionBackground(DORADO);
+        tablaVentas.setSelectionForeground(TEXTO);
+        tablaVentas.setGridColor(new Color(60, 52, 80));
+        JScrollPane scrollVentas = new JScrollPane(tablaVentas);
+        scrollVentas.getViewport().setBackground(SUPERFICIE);
+        JPanel panelVentas = new JPanel(new BorderLayout());
+        panelVentas.setBackground(FONDO);
+        panelVentas.add(scrollVentas, BorderLayout.CENTER);
+
+        disenoVistas = new CardLayout();
+        panelVistas = new JPanel(disenoVistas);
+        panelVistas.add(panelStock, "stock");
+        panelVistas.add(panelVentas, "ventas");
+
         JLabel tituloAdmin = new JLabel("Admin");
         tituloAdmin.setFont(new Font("SansSerif", Font.BOLD, 20));
         tituloAdmin.setForeground(Color.WHITE);
         JButton btnStock = new JButton("Stock");
+        JButton btnVentas = new JButton("Ventas");
 
         JPanel barraNavegacion = new JPanel(new BorderLayout(16, 0));
         barraNavegacion.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(AZUL_MARINO),
                 BorderFactory.createEmptyBorder(8, 12, 8, 12)));
-            barraNavegacion.setBackground(AZUL_MARINO);
+        barraNavegacion.setBackground(AZUL_MARINO);
         estilizarBotonStock(btnStock);
+        estilizarBotonStock(btnVentas);
+        JPanel accionesNavegacion = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        accionesNavegacion.setBackground(AZUL_MARINO);
+        accionesNavegacion.add(btnStock);
+        accionesNavegacion.add(btnVentas);
         barraNavegacion.add(tituloAdmin, BorderLayout.WEST);
-        barraNavegacion.add(btnStock, BorderLayout.EAST);
+        barraNavegacion.add(accionesNavegacion, BorderLayout.EAST);
         btnStock.addActionListener(e -> {
             inventario.recargarDesdeArchivo();
             refrescarTabla();
+            disenoVistas.show(panelVistas, "stock");
         });
+        btnVentas.addActionListener(e -> mostrarVentas());
         add(barraNavegacion, BorderLayout.NORTH);
-        add(panelStock, BorderLayout.CENTER);
+        add(panelVistas, BorderLayout.CENTER);
 
         tablaProductos.getSelectionModel().addListSelectionListener(e -> cargarSeleccion());
         btnAgregar.addActionListener(e -> agregarProducto());
@@ -122,6 +165,25 @@ public class VentanaAdmin extends JFrame {
 
         refrescarTabla();
         setExtendedState(JFrame.MAXIMIZED_BOTH);
+    }
+
+    private void mostrarVentas() {
+        modeloVentas.setRowCount(0);
+
+        try {
+            for (String[] venta : new GestorVentas().obtenerTodasLasVentas()) {
+                modeloVentas.addRow(new Object[] {
+                        venta[0], venta[1], venta[2], venta[3], venta[4], venta[5],
+                        "$" + venta[6], "$" + venta[7], "$" + venta[8]
+                });
+            }
+        } catch (java.io.IOException ex) {
+            JOptionPane.showMessageDialog(this, "No se pudieron cargar las ventas: " + ex.getMessage(),
+                    "Error al cargar ventas", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        disenoVistas.show(panelVistas, "ventas");
     }
 
     private void estilizarBotonStock(JButton boton) {
