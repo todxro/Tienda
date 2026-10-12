@@ -9,7 +9,7 @@ public class Usuario extends Cuenta {
 
     // crea un usuario con un carrito vacio
     public Usuario(String nombre, String apellido, String contrasenia, String direccion, String pais, String comuna, String region, String correo, int numeroDeTelefono, Date fechadeNacimiento, String rut) {
-        super(nombre, apellido, contrasenia, direccion, pais, comuna, region, correo, numeroDeTelefono, fechadeNacimiento, rut);
+        super(nombre, apellido, contrasenia, direccion, correo, rut);
 
         this.carrito = new Carrito();
     }
