@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Date;
 
+// Registra, valida y carga las cuentas de usuario desde usuarios.csv.
 public class GestorUsuarios {
     // archivo donde se guardan los usuarios
     private static final String RUTA_ARCHIVO = "usuarios.csv";
@@ -123,7 +124,7 @@ public class GestorUsuarios {
     }
 
     private void guardarUsuarios() {
-        // escribe todos los usuarios en el archivo
+        // Reescribe el archivo con las cuentas actuales para conservar el registro completo.
         try (BufferedWriter escritor = new BufferedWriter(new FileWriter(RUTA_ARCHIVO))) {
             escritor.write("nombre,apellido,correo,contrasenia,rut"); // escribe el encabezado del csv
             escritor.newLine();

@@ -3,6 +3,13 @@
   "configurations": [
     {
       "type": "java",
+      "name": "VentanaUsuario",
+      "request": "launch",
+      "mainClass": "tienda.VentanaUsuario",
+      "projectName": "Tienda_4c68dbd1"
+    },
+    {
+      "type": "java",
       "name": "VentanaAdmin",
       "request": "launch",
       "mainClass": "tienda.VentanaAdmin",

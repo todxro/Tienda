@@ -2,14 +2,31 @@ package tienda;
 
 import java.awt.*;
 import java.io.IOException;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
+import java.net.InetSocketAddress;
+import java.net.Socket;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayDeque;
+import java.util.Queue;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import javax.swing.*;
+import javax.swing.JDialog;
 import javax.swing.text.AbstractDocument;
 import javax.swing.text.AttributeSet;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.DocumentFilter;
 import javax.swing.table.DefaultTableModel;
 
+// Presenta el catálogo, la compra, el inicio de sesión y el chat del cliente.
 public class VentanaUsuario extends JFrame {
+    private static final String HOST_CHAT = "192.168.1.158";
+    private static final int PUERTO_CHAT = 65432;
     private static final Color AZUL_MARINO = new Color(46, 31, 71);   //morado oscuro
     private static final Color DORADO      = new Color(232, 184, 75); //dorado
     private static final Color FONDO       = new Color(18, 16, 27);   //fondo casi negro
@@ -33,6 +50,16 @@ public class VentanaUsuario extends JFrame {
     private JLabel labelIVA;
     private JLabel labelTotal;
     private JButton botonIniciarSesion;
+    private final JTextArea areaChat = new JTextArea();
+    private final JLabel estadoChat = new JLabel("Desconectado");
+    private final JTextField campoMensajeChat = new JTextField();
+    private final JButton botonEnviarChat = new JButton("Enviar");
+    private final Queue<String> mensajesPendientesChat = new ArrayDeque<>();
+    private JDialog ventanaChat;
+    private volatile Socket socketChat;
+    private volatile PrintWriter salidaChat;
+    private volatile boolean clienteChatCerrado;
+    private volatile boolean chatConectando;
 
     public VentanaUsuario() {
         this(null);
@@ -48,13 +75,21 @@ public class VentanaUsuario extends JFrame {
         setSize(1000, 650);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setContentPane(paneles);
+        // Las tarjetas permiten cambiar de sección dentro de la misma ventana.
         paneles.add(crearPanelLogin(), "login");
         mostrarCatalogo();
+        addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent e) {
+                cerrarClienteChat();
+            }
+        });
         setLocationRelativeTo(null);
         setExtendedState(JFrame.MAXIMIZED_BOTH);
     }
 
     private JPanel crearPanelLogin() {
+        // Panel para iniciar sesión, crear una cuenta o continuar como invitado.
         JPanel panel = new JPanel(new GridBagLayout());
         panel.setBackground(FONDO);
         JPanel formulario = new JPanel(new BorderLayout(8, 12));
@@ -115,6 +150,7 @@ public class VentanaUsuario extends JFrame {
     }
 
     private void mostrarRegistro(JTextField campoCorreo, JPasswordField campoContrasenia) {
+        // Recoge los datos de registro y devuelve el correo al formulario de acceso.
         JTextField nombre = new JTextField();
         JTextField apellido = new JTextField();
         JTextField rut = new JTextField();
@@ -157,6 +193,7 @@ public class VentanaUsuario extends JFrame {
     }
 
     private void mostrarCatalogo() {
+        // Arma la vista de compra y la muestra después de entrar o continuar como invitado.
         setTitle(usuario == null ? "Catálogo - Invitado" : "Catálogo - " + usuario.getNombre());
         JPanel catalogo = new JPanel(new BorderLayout(12, 12));
         catalogo.setBackground(FONDO);
@@ -173,6 +210,7 @@ public class VentanaUsuario extends JFrame {
 
     // construye la barra superior azul con el título y el buscador
     private JPanel crearPanelBusqueda() {
+        // Barra superior para buscar, actualizar el catálogo y acceder al chat.
         JPanel panel = new JPanel(new BorderLayout(10, 10));
         panel.setBackground(AZUL_MARINO);
         panel.setBorder(BorderFactory.createEmptyBorder(12, 16, 12, 16));
@@ -194,6 +232,7 @@ public class VentanaUsuario extends JFrame {
         campoBuscar.setCaretColor(TEXTO_CLARO);        JButton btnBuscar = new JButton("Buscar");
         JButton btnRefrescar = new JButton("Ver todo");
         JButton btnActualizar = new JButton("Actualizar");
+        JButton btnChat = new JButton("Chat con admin");
         
 
         btnBuscar.addActionListener(e -> {
@@ -207,12 +246,15 @@ public class VentanaUsuario extends JFrame {
             inventario.recargarDesdeArchivo();
             actualizarVista();
         });
+        estilizarBoton(btnChat, DORADO, TEXTO);
+        btnChat.addActionListener(e -> mostrarVentanaChat());
 
         busqueda.add(labelBuscar);
         busqueda.add(campoBuscar);
         busqueda.add(btnBuscar);
         busqueda.add(btnRefrescar);
         busqueda.add(btnActualizar);
+        busqueda.add(btnChat);
 
         if (usuario == null) {
             JButton btnIniciarSesion = new JButton("Iniciar sesión");
@@ -232,8 +274,282 @@ public class VentanaUsuario extends JFrame {
         return panel;
     }
 
+    private void mostrarVentanaChat() {
+        if (ventanaChat == null) {
+            ventanaChat = new JDialog(this, "Chat con administración", false);
+            ventanaChat.setDefaultCloseOperation(JDialog.HIDE_ON_CLOSE);
+            ventanaChat.setContentPane(crearPanelChat());
+            ventanaChat.setResizable(false);
+            ventanaChat.setSize(480, 360);
+            ventanaChat.setLocationRelativeTo(this);
+        }
+        ventanaChat.setVisible(true);
+        ventanaChat.toFront();
+        conectarChat();
+    }
+
+    private JPanel crearPanelChat() {
+        // Vista del cliente para conectarse y conversar con el servidor de administración.
+        JPanel panel = new JPanel(new BorderLayout(10, 10));
+        panel.setBackground(FONDO);
+        panel.setBorder(BorderFactory.createEmptyBorder(16, 16, 16, 16));
+
+        JPanel encabezado = new JPanel(new BorderLayout(8, 0));
+        encabezado.setBackground(FONDO);
+        JButton botonCerrar = new JButton("Cerrar chat");
+        estilizarBoton(botonCerrar, AZUL_MARINO, BLANCO);
+        botonCerrar.addActionListener(e -> ventanaChat.setVisible(false));
+
+        encabezado.add(botonCerrar, BorderLayout.WEST);
+
+        areaChat.setEditable(false);
+        areaChat.setLineWrap(true);
+        areaChat.setWrapStyleWord(true);
+        areaChat.setBackground(new Color(28, 24, 43));
+        areaChat.setForeground(TEXTO_CLARO);
+        areaChat.setCaretColor(TEXTO_CLARO);
+        JScrollPane scrollChat = new JScrollPane(areaChat);
+        scrollChat.getViewport().setBackground(new Color(28, 24, 43));
+
+        JPanel panelEnvio = new JPanel(new BorderLayout(8, 0));
+        panelEnvio.setBackground(FONDO);
+        campoMensajeChat.setBackground(new Color(28, 24, 43));
+        campoMensajeChat.setForeground(TEXTO_CLARO);
+        campoMensajeChat.setCaretColor(TEXTO_CLARO);
+        estilizarBoton(botonEnviarChat, DORADO, TEXTO);
+        botonEnviarChat.setEnabled(false);
+        botonEnviarChat.addActionListener(e -> enviarMensajeChat());
+        campoMensajeChat.addActionListener(e -> enviarMensajeChat());
+        panelEnvio.add(campoMensajeChat, BorderLayout.CENTER);
+        panelEnvio.add(botonEnviarChat, BorderLayout.EAST);
+
+        JPanel pie = new JPanel(new BorderLayout(8, 0));
+        pie.setBackground(FONDO);
+        estadoChat.setForeground(TEXTO_CLARO);
+        pie.add(estadoChat, BorderLayout.WEST);
+        pie.add(panelEnvio, BorderLayout.CENTER);
+
+        panel.add(encabezado, BorderLayout.NORTH);
+        panel.add(scrollChat, BorderLayout.CENTER);
+        panel.add(pie, BorderLayout.SOUTH);
+        return panel;
+    }
+
+    private void conectarChat() {
+        // Abre el socket en segundo plano para que la ventana siga respondiendo.
+        if (chatConectando || (socketChat != null && !socketChat.isClosed())) {
+            return;
+        }
+        clienteChatCerrado = false;
+        chatConectando = true;
+        botonEnviarChat.setEnabled(false);
+        estadoChat.setText("Conectando...");
+
+        Thread hiloConexion = new Thread(() -> {
+            Socket nuevaConexion = new Socket();
+            try {
+                nuevaConexion.connect(new InetSocketAddress(HOST_CHAT, PUERTO_CHAT), 5000);
+                PrintWriter nuevaSalida = new PrintWriter(
+                        new OutputStreamWriter(nuevaConexion.getOutputStream(), StandardCharsets.UTF_8), true);
+                if (clienteChatCerrado) {
+                    nuevaConexion.close();
+                    return;
+                }
+                socketChat = nuevaConexion;
+                salidaChat = nuevaSalida;
+                SwingUtilities.invokeLater(() -> {
+                    estadoChat.setText("Conectado a " + HOST_CHAT + ":" + PUERTO_CHAT);
+                    botonEnviarChat.setEnabled(true);
+                    enviarMensajesPendientesChat();
+                });
+
+                Thread hiloRecepcion = new Thread(() -> recibirMensajesChat(nuevaConexion), "recepcion-chat");
+                hiloRecepcion.setDaemon(true);
+                hiloRecepcion.start();
+            } catch (IOException ex) {
+                try {
+                    nuevaConexion.close();
+                } catch (IOException errorCierre) {
+                    ex.addSuppressed(errorCierre);
+                }
+                chatConectando = false;
+                if (!clienteChatCerrado) {
+                    SwingUtilities.invokeLater(() -> {
+                        estadoChat.setText("No se pudo conectar: " + ex.getMessage());
+                        areaChat.append("Error de conexión: " + ex.getMessage() + System.lineSeparator());
+                    });
+                }
+            }
+        }, "conexion-chat");
+        hiloConexion.setDaemon(true);
+        hiloConexion.start();
+    }
+
+    private void enviarMensajeChat() {
+        String mensaje = campoMensajeChat.getText().trim();
+        if (mensaje.isEmpty()) {
+            return;
+        }
+        campoMensajeChat.setText("");
+        areaChat.append("Tú: " + mensaje + System.lineSeparator());
+
+        if (salidaChat == null || socketChat == null || socketChat.isClosed()) {
+            synchronized (mensajesPendientesChat) {
+                mensajesPendientesChat.add(mensaje);
+            }
+            estadoChat.setText("Mensaje pendiente; conectando...");
+            conectarChat();
+            return;
+        }
+
+        try {
+            enviarMensajeAlServidor(crearMensajeJson(mensaje));
+        } catch (IOException ex) {
+            synchronized (mensajesPendientesChat) {
+                mensajesPendientesChat.add(mensaje);
+            }
+            estadoChat.setText("Mensaje pendiente; reconectando...");
+            desconectarServidorChat();
+            conectarChat();
+        }
+    }
+
+    private void enviarMensajesPendientesChat() {
+        while (salidaChat != null && socketChat != null && !socketChat.isClosed()) {
+            String mensaje;
+            synchronized (mensajesPendientesChat) {
+                mensaje = mensajesPendientesChat.peek();
+            }
+            if (mensaje == null) {
+                return;
+            }
+            try {
+                enviarMensajeAlServidor(crearMensajeJson(mensaje));
+                synchronized (mensajesPendientesChat) {
+                    mensajesPendientesChat.remove();
+                }
+            } catch (IOException ex) {
+                estadoChat.setText("No se pudo enviar el mensaje: " + ex.getMessage());
+                desconectarServidorChat();
+                return;
+            }
+        }
+    }
+
+    private void recibirMensajesChat(Socket socket) {
+        // Escucha mensajes del administrador y actualiza la conversación en pantalla.
+        try (BufferedReader entrada = new BufferedReader(
+                new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8))) {
+            String mensaje;
+            while ((mensaje = entrada.readLine()) != null) {
+                String contenido = extraerCampoJson(mensaje, "content");
+                if ("message".equals(extraerCampoJson(mensaje, "type")) && contenido != null) {
+                    SwingUtilities.invokeLater(
+                            () -> areaChat.append("Admin: " + contenido + System.lineSeparator()));
+                }
+            }
+        } catch (IOException ex) {
+            if (!clienteChatCerrado && socketChat == socket) {
+                SwingUtilities.invokeLater(
+                        () -> estadoChat.setText("Conexión interrumpida: " + ex.getMessage()));
+            }
+        } finally {
+            boolean conexionActual = socketChat == socket;
+            if (socketChat == socket) {
+                socketChat = null;
+                salidaChat = null;
+            }
+            try {
+                socket.close();
+            } catch (IOException ex) {
+                if (!clienteChatCerrado && conexionActual) {
+                    SwingUtilities.invokeLater(
+                            () -> estadoChat.setText("No se pudo cerrar la conexión: " + ex.getMessage()));
+                }
+            }
+            if (!clienteChatCerrado && conexionActual) {
+                chatConectando = false;
+                SwingUtilities.invokeLater(() -> {
+                    estadoChat.setText("Desconectado");
+                    botonEnviarChat.setEnabled(false);
+                });
+            }
+        }
+    }
+
+    private String crearMensajeJson(String contenido) {
+        // Empaqueta cada texto con el formato JSON que entiende el servidor.
+        return "{\"type\":\"message\",\"content\":\"" + escaparJson(contenido) + "\"}";
+    }
+
+    private String extraerCampoJson(String json, String campo) {
+        Pattern patron = Pattern.compile("\"" + Pattern.quote(campo)
+                + "\"\\s*:\\s*\"((?:\\\\.|[^\"\\\\])*)\"");
+        Matcher coincidencia = patron.matcher(json);
+        return coincidencia.find() ? desescaparJson(coincidencia.group(1)) : null;
+    }
+
+    private String escaparJson(String texto) {
+        return texto.replace("\\", "\\\\")
+                .replace("\"", "\\\"")
+                .replace("\n", "\\n")
+                .replace("\r", "\\r")
+                .replace("\t", "\\t");
+    }
+
+    private String desescaparJson(String texto) {
+        StringBuilder resultado = new StringBuilder();
+        for (int i = 0; i < texto.length(); i++) {
+            char caracter = texto.charAt(i);
+            if (caracter == '\\' && i + 1 < texto.length()) {
+                char escapado = texto.charAt(++i);
+                switch (escapado) {
+                    case 'n': resultado.append('\n'); break;
+                    case 'r': resultado.append('\r'); break;
+                    case 't': resultado.append('\t'); break;
+                    default: resultado.append(escapado); break;
+                }
+            } else {
+                resultado.append(caracter);
+            }
+        }
+        return resultado.toString();
+    }
+
+    private void enviarMensajeAlServidor(String mensaje) throws IOException {
+        PrintWriter salida = salidaChat;
+        Socket socket = socketChat;
+        if (salida == null || socket == null || socket.isClosed()) {
+            throw new IOException("No hay conexión con el administrador.");
+        }
+        salida.println(mensaje);
+        if (salida.checkError()) {
+            throw new IOException("No se pudo enviar el mensaje al administrador.");
+        }
+    }
+
+    private void desconectarServidorChat() {
+        clienteChatCerrado = true;
+        chatConectando = false;
+        Socket socket = socketChat;
+        socketChat = null;
+        salidaChat = null;
+        if (socket != null) {
+            try {
+                socket.close();
+            } catch (IOException ex) {
+                estadoChat.setText("No se pudo cerrar la conexión: " + ex.getMessage());
+            }
+        }
+    }
+
+    private void cerrarClienteChat() {
+        desconectarServidorChat();
+    }
+
     // arma la tabla del catalogo en el centro de la ventana
     private JPanel crearPanelCatalogo() {
+        // Tabla central con los productos disponibles para seleccionar.
         JPanel panel = new JPanel(new BorderLayout());
         panel.setBackground(FONDO);
         panel.setBorder(BorderFactory.createEmptyBorder(10, 16, 10, 16));
@@ -265,6 +581,7 @@ public class VentanaUsuario extends JFrame {
 
     // arma el panel de abajo con el carrito y los botones
     private JPanel crearPanelCarrito() {
+        // Panel inferior con cantidades, acciones de compra y resumen de precios.
         JPanel panel = new JPanel(new BorderLayout(10, 10));
         panel.setBackground(FONDO);
         panel.setBorder(BorderFactory.createEmptyBorder(0, 16, 12, 16));
@@ -336,6 +653,7 @@ public class VentanaUsuario extends JFrame {
 
     // llena la tabla con la lista de productos recibida
     private void cargarProductosEnTabla(java.util.List<Producto> productos) {
+        // Reemplaza las filas del catálogo con los productos recibidos.
         modeloCatalogo.setRowCount(0);
         for (Producto p : productos) {
             modeloCatalogo.addRow(new Object[]{
@@ -394,6 +712,7 @@ public class VentanaUsuario extends JFrame {
     }
 
     private void comprarProductos() {
+        // Calcula los importes, registra la venta y persiste el stock actualizado.
         if (carrito.getProductos().isEmpty()) {
             JOptionPane.showMessageDialog(this, "El carrito está vacío.", "Compra",
                     JOptionPane.WARNING_MESSAGE);
@@ -462,6 +781,7 @@ public class VentanaUsuario extends JFrame {
     }
 
     public void actualizarVista() {
+        // Sincroniza catálogo, carrito y totales con los datos actuales de la compra.
         // vuelve a llenar la tabla del catalogo con lo que hay en inventario
         cargarProductosEnTabla(inventario.getListaProductos());
 

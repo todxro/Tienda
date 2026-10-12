@@ -13,6 +13,7 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 
+// Guarda las ventas y consulta el historial persistido en ventas.csv.
 public class GestorVentas {
     private static final String RUTA_ARCHIVO = "ventas.csv";
     private static final String ENCABEZADO = "numeroTicket,fecha,rutCliente,nombreCliente,correoCliente,detalleProductos,subtotal,iva,total";
@@ -30,6 +31,7 @@ public class GestorVentas {
     }
 
     public String guardarVentaInvitado(Venta venta) throws IOException {
+        // Asigna un ticket correlativo antes de registrar una compra sin cuenta.
         String numeroVenta = String.valueOf(contarVentasInvitado() + 1);
         venta.setIdVenta(numeroVenta);
         venta.setNombreCliente("Invitado");
@@ -79,6 +81,7 @@ public class GestorVentas {
         return cantidad;
     }
     public ArrayList<String[]> obtenerHistorialCliente(String correoCliente) {
+        // Devuelve solo fecha, detalle y total de las compras del correo indicado.
         ArrayList<String[]> historial = new ArrayList<>();
         File archivo = new File(RUTA_ARCHIVO);
         
@@ -113,6 +116,7 @@ public class GestorVentas {
     }
 
     public ArrayList<String[]> obtenerTodasLasVentas() throws IOException {
+        // Lee las filas completas para mostrarlas en la vista de administración.
         ArrayList<String[]> ventas = new ArrayList<>();
         File archivo = new File(RUTA_ARCHIVO);
 
@@ -142,6 +146,7 @@ public class GestorVentas {
     }
 
     private String[] parsearLineaCSV(String linea) {
+        // Separa comas solo cuando están fuera de campos entrecomillados.
         ArrayList<String> campos = new ArrayList<>();
         StringBuilder campoActual = new StringBuilder();
         boolean dentroDeComillas = false;

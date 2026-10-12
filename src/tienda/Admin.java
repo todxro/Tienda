@@ -4,6 +4,7 @@ package tienda;
 import java.util.ArrayList;
 import java.util.Date;
 
+// Extiende los datos generales de una cuenta con las cuentas que administra.
 public class Admin extends Cuenta {
     // lista de cuentas administradas
     private ArrayList<String> cuentas = new ArrayList<>();

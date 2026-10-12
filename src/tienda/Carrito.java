@@ -1,6 +1,8 @@
 package tienda;
 
 import java.util.ArrayList;
+
+// Mantiene los productos elegidos y sus cantidades durante una compra.
 public class Carrito {
 
 // productos que fueron agregados
@@ -34,7 +36,7 @@ public boolean agregarProducto(Producto producto) {
                 return false;
             }
 
-            // aumenta la cantidad del producto
+            // Reserva una unidad y aumenta la cantidad asociada al producto.
             cantidades.set(i, cantidadActual + 1);
             producto.setStock(producto.getStock() - 1);
 
@@ -46,7 +48,7 @@ public boolean agregarProducto(Producto producto) {
     if (producto.getStock() <= 0) {
         return false;
     }
-    // agrega el producto y su primera unidad
+    // Agrega el producto por primera vez y reserva su primera unidad.
     productos.add(producto);
     cantidades.add(1);
     producto.setStock(producto.getStock() - 1);
@@ -126,6 +128,7 @@ public double calcularTotal() {
 // finaliza la compra y descuenta el stock
 public boolean finalizarCompra() {
 
+    // El stock ya se reservó al agregar; al finalizar solo se vacían las listas.
     productos.clear();
     cantidades.clear();
 

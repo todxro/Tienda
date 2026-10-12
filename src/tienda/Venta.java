@@ -3,6 +3,7 @@ package tienda;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
+// Conserva los datos de una compra y los prepara para guardarlos como CSV.
 public class Venta {
     private String idVenta;
     private Date fecha;
@@ -48,6 +49,7 @@ public class Venta {
 
     // convierte la venta a una linea csv
     public String toCSV() {
+        // Escapa los campos de texto para mantener intacta la estructura de columnas.
         return escaparCSV(idVenta) + "," + getFechaFormateada() + "," + escaparCSV(rutCliente) + ","
                 + escaparCSV(nombreCliente) + "," + escaparCSV(correoCliente) + ","
                 + escaparCSV(detalleProductos) + "," + subtotal + "," + iva + "," + total;

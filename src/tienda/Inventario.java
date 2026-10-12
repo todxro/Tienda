@@ -3,6 +3,7 @@ import java.io.*;
 import java.util.ArrayList;
 import java.util.Comparator;
 
+// Administra los productos en memoria y sincroniza sus cambios con inventario.csv.
 public class Inventario {
     // productos disponibles en el inventario
     private ArrayList<Producto> listaProductos;
@@ -124,7 +125,7 @@ public class Inventario {
         String orden = ascendente ? "(Menor a Mayor)" : "(Mayor a Menor)";
         System.out.println("Inventario ordenado por " + nombreAtributo + " " + orden);
     }
-        // metodos de busqueda
+    // Métodos que filtran el inventario sin modificar los productos guardados.
     public ArrayList<Producto> buscarPorNombre(String texto) {
         // filtra productos que contienen el texto buscado
         ArrayList<Producto> resultados = new ArrayList<>();
@@ -293,6 +294,7 @@ public class Inventario {
             return;
         }
 
+        // Actualiza los productos existentes y agrega o quita los que cambiaron en el archivo.
         for (Producto productoArchivo : productosArchivo) {
             Producto productoActual = buscarProductoEnLista(productoArchivo.getId());
             if (productoActual == null) {
@@ -326,6 +328,7 @@ public class Inventario {
     }
 
     private String[] separarCsv(String linea) {
+        // Conserva las comas que pertenecen al contenido de un campo entre comillas.
         ArrayList<String> campos = new ArrayList<>();
         StringBuilder campo = new StringBuilder();
         boolean entreComillas = false;

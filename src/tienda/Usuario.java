@@ -2,6 +2,7 @@ package tienda;
 
 import java.util.Date;
 
+// Cuenta de cliente que conserva su propio carrito de compras.
 public class Usuario extends Cuenta {
     // carrito personal del usuario
     private Carrito carrito;

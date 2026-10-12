@@ -3,6 +3,7 @@ package tienda;
 
 import java.util.Date;
 
+// Agrupa los datos personales compartidos por usuarios y administradores.
 public class Cuenta {
     // datos generales de una cuenta
     private String nombre;

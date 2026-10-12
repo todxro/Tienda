@@ -1,6 +1,7 @@
 package tienda;
 
 
+// Representa un artículo del catálogo junto con su precio y existencias.
 public class Producto {
     // datos que identifican al producto
     private String id;
