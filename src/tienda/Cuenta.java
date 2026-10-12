@@ -9,27 +9,15 @@ public class Cuenta {
     private String nombre;
     private String apellido; 
     private String contrasenia;
-    private String direccion;
-    private String pais;
-    private String comuna;
-    private String region;
     private String correo;
-    private int numeroDeTelefono;
-    private Date fechadeNacimiento;
     private String rut;
 
     // crea una cuenta con sus datos personales
-    public Cuenta(String nombre, String apellido, String contrasenia, String direccion, String pais, String comuna, String region, String correo, int numeroDeTelefono, Date fechadeNacimiento, String rut) {
+    public Cuenta(String nombre, String apellido, String contrasenia, String direccion, String correo, String rut) {
         this.nombre = nombre;
         this.apellido = apellido;
         this.contrasenia = contrasenia;
-        this.direccion = direccion;
-        this.pais = pais;
-        this.comuna = comuna;
-        this.region = region;
         this.correo = correo;
-        this.numeroDeTelefono = numeroDeTelefono;
-        this.fechadeNacimiento = fechadeNacimiento;
         this.rut = rut;
     }
 
