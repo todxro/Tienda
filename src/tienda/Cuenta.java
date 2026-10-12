@@ -47,60 +47,12 @@ public class Cuenta {
         this.contrasenia = contrasenia;
     }
 
-    public String getDireccion() {
-        return direccion;
-    }
-
-    public void setDireccion(String direccion) {
-        this.direccion = direccion;
-    }
-
-    public String getPais() {
-        return pais;
-    }
-
-    public void setPais(String pais) {
-        this.pais = pais;
-    }
-
-    public String getComuna() {
-        return comuna;
-    }
-
-    public void setComuna(String comuna) {
-        this.comuna = comuna;
-    }
-
-    public String getRegion() {
-        return region;
-    }
-
-    public void setRegion(String region) {
-        this.region = region;
-    }
-
     public String getCorreo() {
         return correo;
     }
 
     public void setCorreo(String correo) {
         this.correo = correo;
-    }
-
-    public int getNumeroDeTelefono() {
-        return numeroDeTelefono;
-    }
-
-    public void setNumeroDeTelefono(int numeroDeTelefono) {
-        this.numeroDeTelefono = numeroDeTelefono;
-    }
-
-    public Date getFechadeNacimiento() {
-        return fechadeNacimiento;
-    }
-
-    public void setFechadeNacimiento(Date fechadeNacimiento) {
-        this.fechadeNacimiento = fechadeNacimiento;
     }
 
     public String getRut() {
