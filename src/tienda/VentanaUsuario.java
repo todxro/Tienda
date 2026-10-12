@@ -16,12 +16,11 @@ import java.util.Queue;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import javax.swing.*;
-import javax.swing.JDialog;
+import javax.swing.table.DefaultTableModel;
 import javax.swing.text.AbstractDocument;
 import javax.swing.text.AttributeSet;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.DocumentFilter;
-import javax.swing.table.DefaultTableModel;
 
 // Presenta el catálogo, la compra, el inicio de sesión y el chat del cliente.
 public class VentanaUsuario extends JFrame {
@@ -233,7 +232,6 @@ public class VentanaUsuario extends JFrame {
         JButton btnRefrescar = new JButton("Ver todo");
         JButton btnActualizar = new JButton("Actualizar");
         JButton btnChat = new JButton("Chat con admin");
-        
 
         btnBuscar.addActionListener(e -> {
             String texto = campoBuscar.getText().trim();
@@ -255,6 +253,10 @@ public class VentanaUsuario extends JFrame {
         busqueda.add(btnRefrescar);
         busqueda.add(btnActualizar);
         busqueda.add(btnChat);
+        JButton btnCuenta = new JButton("Cuenta");
+        estilizarBoton(btnCuenta, DORADO, TEXTO);
+        btnCuenta.addActionListener(e -> mostrarCuenta());
+        busqueda.add(btnCuenta);
 
         if (usuario == null) {
             JButton btnIniciarSesion = new JButton("Iniciar sesión");
@@ -264,14 +266,80 @@ public class VentanaUsuario extends JFrame {
                 getRootPane().setDefaultButton(botonIniciarSesion);
             });
             busqueda.add(btnIniciarSesion);
+
         } else {
             JLabel saludo = new JLabel("Hola, " + usuario.getNombre());
             saludo.setForeground(BLANCO);
             busqueda.add(saludo);
+
+            JButton btnCerrarSesion = new JButton("Cerrar sesión");
+            estilizarBoton(btnCerrarSesion, DORADO, TEXTO);
+            btnCerrarSesion.addActionListener(e -> {
+                usuario = null;
+                carrito = new Carrito();
+                mostrarCatalogo();
+            });
+            busqueda.add(btnCerrarSesion);
         }
 
         panel.add(busqueda, BorderLayout.EAST);
         return panel;
+    }
+
+    private void mostrarCuenta() {
+        JDialog ventana = new JDialog(this, "Datos de la cuenta", true);
+        ventana.setSize(400, 330);
+        ventana.setLocationRelativeTo(this);
+        ventana.getContentPane().setBackground(FONDO);
+
+        JPanel contenido = new JPanel(new BorderLayout(10, 15));
+        contenido.setBackground(FONDO);
+        contenido.setBorder(BorderFactory.createEmptyBorder(20, 25, 20, 25));
+
+        JLabel titulo = new JLabel("DATOS DE LA CUENTA", SwingConstants.CENTER);
+        titulo.setFont(new Font("SansSerif", Font.BOLD, 20));
+        titulo.setForeground(DORADO);
+        contenido.add(titulo, BorderLayout.NORTH);
+
+        JPanel datos = new JPanel(new GridLayout(5, 2, 10, 12));
+        datos.setBackground(FONDO);
+
+        String nombre = usuario == null ? "Invitado" : usuario.getNombre();
+        String apellido = usuario == null ? "Invitado" : usuario.getApellido();
+        String rut = usuario == null ? "Invitado" : usuario.getRut();
+        String correo = usuario == null ? "Invitado" : usuario.getCorreo();
+        String tipo = usuario == null ? "Invitado" : "Registrada";
+
+        String[] etiquetas = {"Tipo de cuenta:", "Nombre:", "Apellido:", "RUT:", "Correo:"};
+        String[] valores = {tipo, nombre, apellido, rut, correo};
+
+        for (int i = 0; i < etiquetas.length; i++) {
+            JLabel etiqueta = new JLabel(etiquetas[i]);
+            etiqueta.setForeground(DORADO);
+            etiqueta.setFont(new Font("SansSerif", Font.BOLD, 13));
+
+            JLabel valor = new JLabel(valores[i]);
+            valor.setForeground(TEXTO_CLARO);
+            valor.setFont(new Font("SansSerif", Font.PLAIN, 13));
+
+            datos.add(etiqueta);
+            datos.add(valor);
+        }
+
+        contenido.add(datos, BorderLayout.CENTER);
+
+        JButton aceptar = new JButton("Aceptar");
+        estilizarBoton(aceptar, DORADO, TEXTO);
+        aceptar.addActionListener(e -> ventana.dispose());
+
+        JPanel pie = new JPanel();
+        pie.setBackground(FONDO);
+        pie.add(aceptar);
+        contenido.add(pie, BorderLayout.SOUTH);
+
+        ventana.setContentPane(contenido);
+        ventana.setResizable(false);
+    ventana.setVisible(true);
     }
 
     private void mostrarVentanaChat() {
