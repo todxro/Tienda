@@ -42,12 +42,16 @@ import javax.swing.table.DefaultTableModel;
 public class VentanaAdmin extends JFrame {
     private static final String HOST_CHAT = "172.26.39.8";
     private static final int PUERTO_CHAT = 65432;
-    private static final Color AZUL_MARINO = new Color(46, 31, 71);
-    private static final Color DORADO = new Color(232, 184, 75);
-    private static final Color FONDO = new Color(18, 16, 27);
-    private static final Color SUPERFICIE = new Color(28, 24, 43);
-    private static final Color TEXTO = new Color(61, 43, 0);
-    private static final Color TEXTO_CLARO = new Color(217, 210, 232);
+    private static final Color AZUL = new Color(34, 96, 176);
+    private static final Color AZUL_MARINO = new Color(18, 67, 121);
+    private static final Color NARANJA = new Color(244, 132, 54);
+    private static final Color AMARILLO = new Color(250, 204, 76);
+    private static final Color DORADO = AMARILLO;
+    private static final Color FONDO = new Color(232, 217, 195);
+    private static final Color SUPERFICIE = new Color(217, 197, 168);
+    private static final Color TEXTO = new Color(25, 52, 76);
+    private static final Color TEXTO_CLARO = new Color(72, 98, 126);
+    private static final Color MARFIL = new Color(246, 233, 207);
     private final Inventario inventario;
     private final DefaultTableModel modeloTabla;
     private final JTable tablaProductos;
@@ -89,12 +93,12 @@ public class VentanaAdmin extends JFrame {
         tablaProductos.setRowHeight(28);
         tablaProductos.getTableHeader().setFont(new Font(Font.SANS_SERIF, Font.BOLD, 14));
         tablaProductos.getTableHeader().setBackground(AZUL_MARINO);
-        tablaProductos.getTableHeader().setForeground(Color.WHITE);
+        tablaProductos.getTableHeader().setForeground(MARFIL);
         tablaProductos.setBackground(SUPERFICIE);
         tablaProductos.setForeground(TEXTO_CLARO);
         tablaProductos.setSelectionBackground(DORADO);
         tablaProductos.setSelectionForeground(TEXTO);
-        tablaProductos.setGridColor(new Color(60, 52, 80));
+        tablaProductos.setGridColor(AZUL);
 
         txtNombre = new JTextField();
         txtPrecio = new JTextField();
@@ -141,12 +145,12 @@ public class VentanaAdmin extends JFrame {
         tablaVentas.setRowHeight(28);
         tablaVentas.getTableHeader().setFont(new Font(Font.SANS_SERIF, Font.BOLD, 14));
         tablaVentas.getTableHeader().setBackground(AZUL_MARINO);
-        tablaVentas.getTableHeader().setForeground(Color.WHITE);
+        tablaVentas.getTableHeader().setForeground(MARFIL);
         tablaVentas.setBackground(SUPERFICIE);
         tablaVentas.setForeground(TEXTO_CLARO);
         tablaVentas.setSelectionBackground(DORADO);
         tablaVentas.setSelectionForeground(TEXTO);
-        tablaVentas.setGridColor(new Color(60, 52, 80));
+        tablaVentas.setGridColor(AZUL);
         JScrollPane scrollVentas = new JScrollPane(tablaVentas);
         scrollVentas.getViewport().setBackground(SUPERFICIE);
         JPanel panelVentas = new JPanel(new BorderLayout());
@@ -165,7 +169,7 @@ public class VentanaAdmin extends JFrame {
 
         JLabel tituloAdmin = new JLabel("Admin");
         tituloAdmin.setFont(new Font("SansSerif", Font.BOLD, 20));
-        tituloAdmin.setForeground(Color.WHITE);
+        tituloAdmin.setForeground(MARFIL);
         JButton btnStock = new JButton("Stock");
         JButton btnVentas = new JButton("Ventas");
         JButton btnChat = new JButton("Chat");

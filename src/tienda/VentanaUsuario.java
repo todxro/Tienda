@@ -26,12 +26,16 @@ import javax.swing.text.DocumentFilter;
 public class VentanaUsuario extends JFrame {
     private static final String HOST_CHAT = "172.26.39.8";
     private static final int PUERTO_CHAT = 65432;
-    private static final Color AZUL_MARINO = new Color(46, 31, 71);   //morado oscuro
-    private static final Color DORADO      = new Color(232, 184, 75); //dorado
-    private static final Color FONDO       = new Color(18, 16, 27);   //fondo casi negro
-    private static final Color TEXTO       = new Color(61, 43, 0);    //texto oscuro
-    private static final Color TEXTO_CLARO = new Color(217, 210, 232);//texto claro
-    private static final Color BLANCO      = Color.WHITE;
+    private static final Color AZUL        = new Color(34, 96, 176);
+    private static final Color AZUL_MARINO = new Color(18, 67, 121);
+    private static final Color NARANJA     = new Color(244, 132, 54);
+    private static final Color AMARILLO    = new Color(250, 204, 76);
+    private static final Color DORADO      = AMARILLO;
+    private static final Color FONDO       = new Color(232, 217, 195);
+    private static final Color SUPERFICIE  = new Color(217, 197, 168);
+    private static final Color TEXTO       = new Color(25, 52, 76);
+    private static final Color TEXTO_CLARO = new Color(72, 98, 126);
+    private static final Color MARFIL      = new Color(246, 233, 207);
     private Usuario usuario;
     private Carrito carrito;
     private final Inventario inventario;
@@ -45,8 +49,6 @@ public class VentanaUsuario extends JFrame {
     private JTable tablaCarrito;
     private DefaultTableModel modeloCarrito;
     private JTextField campoCantidad;
-    private JLabel labelSubtotal;
-    private JLabel labelIVA;
     private JLabel labelTotal;
     private JButton botonIniciarSesion;
     private final JTextArea areaChat = new JTextArea();
@@ -115,8 +117,8 @@ public class VentanaUsuario extends JFrame {
         JButton crearCuenta = new JButton("Crear cuenta");
         JButton continuarComoInvitado = new JButton("Continuar como invitado");
         estilizarBoton(iniciar, DORADO, TEXTO);
-        estilizarBoton(crearCuenta, AZUL_MARINO, BLANCO);
-        estilizarBoton(continuarComoInvitado, AZUL_MARINO, BLANCO);
+        estilizarBoton(crearCuenta, AZUL_MARINO, MARFIL);
+        estilizarBoton(continuarComoInvitado, AZUL_MARINO, MARFIL);
         JPanel botones = new JPanel(new GridLayout(1, 3, 8, 8));
         botones.setBackground(FONDO);
         botones.add(iniciar);
@@ -216,17 +218,17 @@ public class VentanaUsuario extends JFrame {
 
         JLabel titulo = new JLabel("CATÁLOGO");
         titulo.setFont(new Font("SansSerif", Font.BOLD, 20));
-        titulo.setForeground(BLANCO);
+        titulo.setForeground(MARFIL);
         panel.add(titulo, BorderLayout.WEST);
 
         JPanel busqueda = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         busqueda.setOpaque(false);
 
         JLabel labelBuscar = new JLabel("Buscar:");
-        labelBuscar.setForeground(BLANCO);
+        labelBuscar.setForeground(MARFIL);
 
         JTextField campoBuscar = new JTextField(15);
-        campoBuscar.setBackground(new Color(28, 24, 43));
+        campoBuscar.setBackground(SUPERFICIE);
         campoBuscar.setForeground(TEXTO_CLARO);
         campoBuscar.setCaretColor(TEXTO_CLARO);        JButton btnBuscar = new JButton("Buscar");
         JButton btnRefrescar = new JButton("Ver todo");
@@ -269,7 +271,7 @@ public class VentanaUsuario extends JFrame {
 
         } else {
             JLabel saludo = new JLabel("Hola, " + usuario.getNombre());
-            saludo.setForeground(BLANCO);
+            saludo.setForeground(MARFIL);
             busqueda.add(saludo);
 
             JButton btnCerrarSesion = new JButton("Cerrar sesión");
@@ -365,7 +367,7 @@ public class VentanaUsuario extends JFrame {
         JPanel encabezado = new JPanel(new BorderLayout(8, 0));
         encabezado.setBackground(FONDO);
         JButton botonCerrar = new JButton("Cerrar chat");
-        estilizarBoton(botonCerrar, AZUL_MARINO, BLANCO);
+        estilizarBoton(botonCerrar, AZUL_MARINO, MARFIL);
         botonCerrar.addActionListener(e -> ventanaChat.setVisible(false));
 
         encabezado.add(botonCerrar, BorderLayout.WEST);
@@ -373,18 +375,18 @@ public class VentanaUsuario extends JFrame {
         areaChat.setEditable(false);
         areaChat.setLineWrap(true);
         areaChat.setWrapStyleWord(true);
-        areaChat.setBackground(new Color(28, 24, 43));
+        areaChat.setBackground(SUPERFICIE);
         areaChat.setForeground(TEXTO_CLARO);
         areaChat.setCaretColor(TEXTO_CLARO);
         JScrollPane scrollChat = new JScrollPane(areaChat);
-        scrollChat.getViewport().setBackground(new Color(28, 24, 43));
+        scrollChat.getViewport().setBackground(SUPERFICIE);
 
         JPanel panelEnvio = new JPanel(new BorderLayout(8, 0));
         panelEnvio.setBackground(FONDO);
-        campoMensajeChat.setBackground(new Color(28, 24, 43));
+        campoMensajeChat.setBackground(SUPERFICIE);
         campoMensajeChat.setForeground(TEXTO_CLARO);
         campoMensajeChat.setCaretColor(TEXTO_CLARO);
-        estilizarBoton(botonEnviarChat, DORADO, TEXTO);
+        estilizarBoton(botonEnviarChat, NARANJA, MARFIL);
         botonEnviarChat.setEnabled(false);
         botonEnviarChat.addActionListener(e -> enviarMensajeChat());
         campoMensajeChat.addActionListener(e -> enviarMensajeChat());
@@ -634,15 +636,15 @@ public class VentanaUsuario extends JFrame {
         tablaCatalogo.setRowHeight(28);
         tablaCatalogo.setSelectionMode(javax.swing.ListSelectionModel.SINGLE_SELECTION);
         tablaCatalogo.getTableHeader().setBackground(AZUL_MARINO);
-        tablaCatalogo.getTableHeader().setForeground(BLANCO);
-        tablaCatalogo.setSelectionBackground(DORADO);
+        tablaCatalogo.getTableHeader().setForeground(MARFIL);
+        tablaCatalogo.setSelectionBackground(AMARILLO);
         tablaCatalogo.setSelectionForeground(TEXTO);
-        tablaCatalogo.setGridColor(new Color(60, 52, 80));
-        tablaCatalogo.setBackground(new Color(28, 24, 43));
+        tablaCatalogo.setGridColor(AZUL);
+        tablaCatalogo.setBackground(SUPERFICIE);
         tablaCatalogo.setForeground(TEXTO_CLARO);
 
         JScrollPane scrollCatalogo = new JScrollPane(tablaCatalogo);
-        scrollCatalogo.getViewport().setBackground(new Color(28, 24, 43));
+        scrollCatalogo.getViewport().setBackground(SUPERFICIE);
         panel.add(scrollCatalogo, BorderLayout.CENTER);
         return panel;
     }
@@ -664,11 +666,11 @@ public class VentanaUsuario extends JFrame {
         tablaCarrito = new JTable(modeloCarrito);
         tablaCarrito.setRowHeight(24);
         tablaCarrito.getTableHeader().setBackground(AZUL_MARINO);
-        tablaCarrito.getTableHeader().setForeground(BLANCO);
-        tablaCarrito.setBackground(new Color(28, 24, 43));
+        tablaCarrito.getTableHeader().setForeground(MARFIL);
+        tablaCarrito.setBackground(SUPERFICIE);
         tablaCarrito.setForeground(TEXTO_CLARO);
         JScrollPane scrollCarrito = new JScrollPane(tablaCarrito);
-        scrollCarrito.getViewport().setBackground(new Color(28, 24, 43));
+        scrollCarrito.getViewport().setBackground(SUPERFICIE);
         scrollCarrito.setPreferredSize(new Dimension(0, 140));
 
         JPanel controles = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 8));
@@ -678,31 +680,24 @@ public class VentanaUsuario extends JFrame {
         labelCantidad.setForeground(TEXTO_CLARO);
         controles.add(labelCantidad);
         campoCantidad = new JTextField("1", 4);
-        campoCantidad.setBackground(new Color(28, 24, 43));
+        campoCantidad.setBackground(SUPERFICIE);
         campoCantidad.setForeground(TEXTO_CLARO);
-        campoCantidad.setCaretColor(TEXTO_CLARO);        controles.add(campoCantidad);
+        campoCantidad.setCaretColor(TEXTO_CLARO);
+        controles.add(campoCantidad);
 
         JButton btnAgregar = new JButton("Agregar al carrito");
-        estilizarBoton(btnAgregar, DORADO, TEXTO);
+        estilizarBoton(btnAgregar, AMARILLO, TEXTO);
         btnAgregar.addActionListener(e -> agregarAlCarrito());
         controles.add(btnAgregar);
 
         JButton btnComprar = new JButton("Comprar");
-        estilizarBoton(btnComprar, AZUL_MARINO, BLANCO);
+        estilizarBoton(btnComprar, NARANJA, MARFIL);
         btnComprar.addActionListener(e -> comprarProductos());
         controles.add(btnComprar);
 
-        labelSubtotal = new JLabel("Subtotal: $0");
-        labelSubtotal.setForeground(TEXTO_CLARO);
-        controles.add(labelSubtotal);
-
-        labelIVA = new JLabel("IVA (19%): $0");
-        labelIVA.setForeground(TEXTO_CLARO);
-        controles.add(labelIVA);
-
         labelTotal = new JLabel("TOTAL: $0");
         labelTotal.setFont(new Font("SansSerif", Font.BOLD, 16));
-        labelTotal.setForeground(DORADO);
+        labelTotal.setForeground(Color.BLACK);
         controles.add(labelTotal);
 
         panel.add(controles, BorderLayout.NORTH);
@@ -863,8 +858,6 @@ public class VentanaUsuario extends JFrame {
             });
         }
 
-        labelSubtotal.setText("Subtotal: $" + carrito.calcularSubtotalCarrito());
-        labelIVA.setText("IVA (19%): $" + carrito.calcularIVA());
         labelTotal.setText("TOTAL: $" + carrito.calcularTotal());
     }
 
