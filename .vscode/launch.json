@@ -6,6 +6,20 @@
       "name": "VentanaUsuario",
       "request": "launch",
       "mainClass": "tienda.VentanaUsuario",
+      "projectName": "Tienda_1ab1fcb7"
+    },
+    {
+      "type": "java",
+      "name": "VentanaAdmin",
+      "request": "launch",
+      "mainClass": "tienda.VentanaAdmin",
+      "projectName": "Tienda_1ab1fcb7"
+    },
+    {
+      "type": "java",
+      "name": "VentanaUsuario",
+      "request": "launch",
+      "mainClass": "tienda.VentanaUsuario",
       "projectName": "Tienda_4c68dbd1"
     },
     {

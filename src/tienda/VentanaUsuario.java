@@ -1,10 +1,10 @@
 package tienda;
 
 import java.awt.*;
-import java.io.IOException;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
@@ -24,7 +24,7 @@ import javax.swing.text.DocumentFilter;
 
 // Presenta el catálogo, la compra, el inicio de sesión y el chat del cliente.
 public class VentanaUsuario extends JFrame {
-    private static final String HOST_CHAT = "192.168.1.158";
+    private static final String HOST_CHAT = "172.26.39.8";
     private static final int PUERTO_CHAT = 65432;
     private static final Color AZUL_MARINO = new Color(46, 31, 71);   //morado oscuro
     private static final Color DORADO      = new Color(232, 184, 75); //dorado
@@ -233,6 +233,40 @@ public class VentanaUsuario extends JFrame {
         JButton btnActualizar = new JButton("Actualizar");
         JButton btnChat = new JButton("Chat con admin");
 
+        JLabel labelMin = new JLabel("Min $:");
+        labelMin.setForeground(BLANCO);
+        JTextField campoMin = new JTextField(5);
+        campoMin.setBackground(new Color(28, 24, 43));
+        campoMin.setForeground(TEXTO_CLARO);
+        campoMin.setCaretColor(TEXTO_CLARO);
+
+        JLabel labelMax = new JLabel("Max $:");
+        labelMax.setForeground(BLANCO);
+        JTextField campoMax = new JTextField(5);
+        campoMax.setBackground(new Color(28, 24, 43));
+        campoMax.setForeground(TEXTO_CLARO);
+        campoMax.setCaretColor(TEXTO_CLARO);
+
+        JButton btnFiltrarPrecio = new JButton("Filtrar Precio");
+        estilizarBoton(btnFiltrarPrecio, DORADO, TEXTO); //colores
+        btnFiltrarPrecio.addActionListener(e -> {
+    try {
+        // si el campo está vacio asume 0, de lo contrario lee el valor
+        double min = campoMin.getText().trim().isEmpty() ? 0 : Double.parseDouble(campoMin.getText().trim());
+        
+        // si el campo esta vacío asume el valor maximo posible, de lo contrario lee el valor
+        double max = campoMax.getText().trim().isEmpty() ? Double.MAX_VALUE : Double.parseDouble(campoMax.getText().trim());
+        
+        cargarProductosEnTabla(inventario.filtrarPorRangoPrecio(min, max));
+        
+    } catch (NumberFormatException ex) {
+        JOptionPane.showMessageDialog(this, 
+            "Por favor, ingresa montos numéricos válidos.", 
+            "Formato incorrecto", 
+            JOptionPane.WARNING_MESSAGE);
+    }
+});
+
         btnBuscar.addActionListener(e -> {
             String texto = campoBuscar.getText().trim();
             if (!texto.isEmpty()) {
@@ -253,6 +287,11 @@ public class VentanaUsuario extends JFrame {
         busqueda.add(btnRefrescar);
         busqueda.add(btnActualizar);
         busqueda.add(btnChat);
+        busqueda.add(labelMin);
+        busqueda.add(campoMin);
+        busqueda.add(labelMax);
+        busqueda.add(campoMax);
+        busqueda.add(btnFiltrarPrecio);
         JButton btnCuenta = new JButton("Cuenta");
         estilizarBoton(btnCuenta, DORADO, TEXTO);
         btnCuenta.addActionListener(e -> mostrarCuenta());
