@@ -6,6 +6,13 @@
       "name": "VentanaUsuario",
       "request": "launch",
       "mainClass": "tienda.VentanaUsuario",
+      "projectName": "Tienda_132b21a9"
+    },
+    {
+      "type": "java",
+      "name": "VentanaUsuario",
+      "request": "launch",
+      "mainClass": "tienda.VentanaUsuario",
       "projectName": "Tienda_1ab1fcb7"
     },
     {

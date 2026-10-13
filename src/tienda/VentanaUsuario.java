@@ -236,14 +236,14 @@ public class VentanaUsuario extends JFrame {
         JButton btnChat = new JButton("Chat con admin");
 
         JLabel labelMin = new JLabel("Min $:");
-        labelMin.setForeground(BLANCO);
+        labelMin.setForeground(MARFIL);
         JTextField campoMin = new JTextField(5);
         campoMin.setBackground(new Color(28, 24, 43));
         campoMin.setForeground(TEXTO_CLARO);
         campoMin.setCaretColor(TEXTO_CLARO);
 
         JLabel labelMax = new JLabel("Max $:");
-        labelMax.setForeground(BLANCO);
+        labelMax.setForeground(MARFIL);
         JTextField campoMax = new JTextField(5);
         campoMax.setBackground(new Color(28, 24, 43));
         campoMax.setForeground(TEXTO_CLARO);
