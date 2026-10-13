@@ -24,7 +24,7 @@ import javax.swing.text.DocumentFilter;
 
 // Presenta el catálogo, la compra, el inicio de sesión y el chat del cliente.
 public class VentanaUsuario extends JFrame {
-    private static final String HOST_CHAT = "192.168.1.158";
+    private static final String HOST_CHAT = "172.26.39.8";
     private static final int PUERTO_CHAT = 65432;
     private static final Color AZUL_MARINO = new Color(46, 31, 71);   //morado oscuro
     private static final Color DORADO      = new Color(232, 184, 75); //dorado
