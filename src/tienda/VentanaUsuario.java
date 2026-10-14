@@ -51,6 +51,7 @@ public class VentanaUsuario extends JFrame {
     private JTextField campoCantidad;
     private JLabel labelTotal;
     private JButton botonIniciarSesion;
+    private JButton botonCarrito;
     private final JTextArea areaChat = new JTextArea();
     private final JLabel estadoChat = new JLabel("Desconectado");
     private final JTextField campoMensajeChat = new JTextField();
@@ -61,6 +62,7 @@ public class VentanaUsuario extends JFrame {
     private volatile PrintWriter salidaChat;
     private volatile boolean clienteChatCerrado;
     private volatile boolean chatConectando;
+    
 
     public VentanaUsuario() {
         this(null);
@@ -200,7 +202,7 @@ public class VentanaUsuario extends JFrame {
         catalogo.setBackground(FONDO);
         catalogo.add(crearPanelBusqueda(), BorderLayout.NORTH);
         catalogo.add(crearPanelCatalogo(), BorderLayout.CENTER);
-        catalogo.add(crearPanelCarrito(), BorderLayout.SOUTH);
+        catalogo.add(crearPanelAcciones(), BorderLayout.SOUTH);
         paneles.add(catalogo, "catalogo");
         tarjetas.show(paneles, "catalogo");
         getRootPane().setDefaultButton(null);
@@ -688,61 +690,92 @@ public class VentanaUsuario extends JFrame {
         return panel;
     }
 
-    // arma el panel de abajo con el carrito y los botones
-    private JPanel crearPanelCarrito() {
-        // Panel inferior con cantidades, acciones de compra y resumen de precios.
-        JPanel panel = new JPanel(new BorderLayout(10, 10));
+    // arma el panel
+    
+    private JPanel crearPanelAcciones() {
+        JPanel panel = new JPanel(new FlowLayout(FlowLayout.CENTER, 12, 12));
         panel.setBackground(FONDO);
-        panel.setBorder(BorderFactory.createEmptyBorder(0, 16, 12, 16));
-
-        String[] columnas = {"Producto", "Cantidad", "Subtotal"};
-        modeloCarrito = new DefaultTableModel(columnas, 0) {
-            @Override
-            public boolean isCellEditable(int row, int col) {
-                return false;
-            }
-        };
-        tablaCarrito = new JTable(modeloCarrito);
-        tablaCarrito.setRowHeight(24);
-        tablaCarrito.getTableHeader().setBackground(AZUL_MARINO);
-        tablaCarrito.getTableHeader().setForeground(MARFIL);
-        tablaCarrito.setBackground(SUPERFICIE);
-        tablaCarrito.setForeground(TEXTO_CLARO);
-        JScrollPane scrollCarrito = new JScrollPane(tablaCarrito);
-        scrollCarrito.getViewport().setBackground(SUPERFICIE);
-        scrollCarrito.setPreferredSize(new Dimension(0, 140));
-
-        JPanel controles = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 8));
-        controles.setBackground(FONDO);
 
         JLabel labelCantidad = new JLabel("Cantidad:");
         labelCantidad.setForeground(TEXTO_CLARO);
-        controles.add(labelCantidad);
+        panel.add(labelCantidad);
+
         campoCantidad = new JTextField("1", 4);
         campoCantidad.setBackground(SUPERFICIE);
         campoCantidad.setForeground(TEXTO_CLARO);
         campoCantidad.setCaretColor(TEXTO_CLARO);
-        controles.add(campoCantidad);
+        panel.add(campoCantidad);
 
         JButton btnAgregar = new JButton("Agregar al carrito");
         estilizarBoton(btnAgregar, AMARILLO, TEXTO);
         btnAgregar.addActionListener(e -> agregarAlCarrito());
-        controles.add(btnAgregar);
+        panel.add(btnAgregar);
+
+        botonCarrito = new JButton("Carrito (0)");
+        estilizarBoton(botonCarrito, DORADO, TEXTO);
+        botonCarrito.addActionListener(e -> mostrarCarrito());
+        panel.add(botonCarrito);
+
+        return panel;
+     }
+    
+    private void mostrarCarrito() {
+        JDialog ventana = new JDialog(this, "Mi carrito", true);
+        ventana.setSize(500, 400);
+        ventana.setLocationRelativeTo(this);
+
+        JPanel panel = new JPanel(new BorderLayout(10, 10));
+        panel.setBackground(FONDO);
+        panel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
+
+        String[] columnas = {"Producto", "Cantidad", "Subtotal"};
+
+        modeloCarrito = new DefaultTableModel(columnas, 0) {
+            @Override
+            public boolean isCellEditable(int fila, int columna) {
+                return false;
+            }
+        };
+
+        tablaCarrito = new JTable(modeloCarrito);
+        tablaCarrito.setRowHeight(25);
+        tablaCarrito.getTableHeader().setBackground(AZUL_MARINO);
+        tablaCarrito.getTableHeader().setForeground(MARFIL);
+        tablaCarrito.setBackground(SUPERFICIE);
+        tablaCarrito.setForeground(TEXTO_CLARO);
+
+        JScrollPane scroll = new JScrollPane(tablaCarrito);
+        panel.add(scroll, BorderLayout.CENTER);
+
+        JPanel pie = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        pie.setBackground(FONDO);
+
+        labelTotal = new JLabel();
+        labelTotal.setFont(new Font("SansSerif", Font.BOLD, 16));
+        labelTotal.setForeground(TEXTO_CLARO);
+        pie.add(labelTotal);
 
         JButton btnComprar = new JButton("Comprar");
         estilizarBoton(btnComprar, NARANJA, MARFIL);
-        btnComprar.addActionListener(e -> comprarProductos());
-        controles.add(btnComprar);
+        btnComprar.addActionListener(e -> {
+            ventana.dispose();
+            comprarProductos();
+        });
+        pie.add(btnComprar);
 
-        labelTotal = new JLabel("TOTAL: $0");
-        labelTotal.setFont(new Font("SansSerif", Font.BOLD, 16));
-        labelTotal.setForeground(Color.BLACK);
-        controles.add(labelTotal);
+        JButton btnCerrar = new JButton("Cerrar");
+        estilizarBoton(btnCerrar, AZUL_MARINO, MARFIL);
+        btnCerrar.addActionListener(e -> ventana.dispose());
+        pie.add(btnCerrar);
 
-        panel.add(controles, BorderLayout.NORTH);
-        panel.add(scrollCarrito, BorderLayout.CENTER);
-        return panel;
+        panel.add(pie, BorderLayout.SOUTH);
+        ventana.setContentPane(panel);
+
+        actualizarVista();
+        ventana.setVisible(true);
     }
+
+
 
     // le da el mismo estilo a los botones para no repetir codigo
     private void estilizarBoton(JButton boton, Color fondo, Color texto) {
@@ -882,23 +915,39 @@ public class VentanaUsuario extends JFrame {
         actualizarVista();
     }
 
+    
     public void actualizarVista() {
-        // Sincroniza catálogo, carrito y totales con los datos actuales de la compra.
-        // vuelve a llenar la tabla del catalogo con lo que hay en inventario
         cargarProductosEnTabla(inventario.getListaProductos());
 
-        // vuelve a llenar la tabla del carrito
-        modeloCarrito.setRowCount(0);
+        // Actualiza el contador del carrito
+        int cantidadTotal = 0;
+
         for (Producto p : carrito.getProductos()) {
-            modeloCarrito.addRow(new Object[]{
+            cantidadTotal += carrito.getCantidad(p.getId());
+    }
+
+        if (botonCarrito != null) {
+            botonCarrito.setText("Carrito (" + cantidadTotal + ")");
+        }
+
+        // Actualiza la tabla solo si fue creada al abrir el carrito
+        if (modeloCarrito != null) {
+            modeloCarrito.setRowCount(0);
+
+            for (Producto p : carrito.getProductos()) {
+                modeloCarrito.addRow(new Object[]{
                     p.getNombre(),
                     carrito.getCantidad(p.getId()),
                     "$" + carrito.calcularSubtotal(p.getId())
-            });
+                });
+            }
         }
 
-        labelTotal.setText("TOTAL: $" + carrito.calcularTotal());
+        if (labelTotal != null) {
+            labelTotal.setText("TOTAL: $" + carrito.calcularTotal());
+        }
     }
+
 
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> new VentanaUsuario().setVisible(true));
