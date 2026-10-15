@@ -1,6 +1,8 @@
 package tienda;
 
 import java.awt.*;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.BufferedReader;
@@ -44,8 +46,7 @@ public class VentanaUsuario extends JFrame {
     private final JPanel paneles = new JPanel(tarjetas);
 
     // componentes de la interfaz
-    private JTable tablaCatalogo;
-    private DefaultTableModel modeloCatalogo;
+    private JPanel grillaCatalogo;
     private JTable tablaCarrito;
     private DefaultTableModel modeloCarrito;
     private JTextField campoCantidad;
@@ -79,6 +80,7 @@ public class VentanaUsuario extends JFrame {
         // Las tarjetas permiten cambiar de sección dentro de la misma ventana.
         paneles.add(crearPanelLogin(), "login");
         mostrarCatalogo();
+        crearBotonAyuda();    
         addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosing(WindowEvent e) {
@@ -233,7 +235,6 @@ public class VentanaUsuario extends JFrame {
         campoBuscar.setCaretColor(TEXTO_CLARO);        JButton btnBuscar = new JButton("Buscar");
         JButton btnRefrescar = new JButton("Ver todo");
         JButton btnActualizar = new JButton("Actualizar");
-        JButton btnChat = new JButton("Chat con admin");
 
         JLabel labelMin = new JLabel("Min $:");
         labelMin.setForeground(MARFIL);
@@ -259,8 +260,7 @@ public class VentanaUsuario extends JFrame {
         // si el campo esta vacío asume el valor maximo posible, de lo contrario lee el valor
         double max = campoMax.getText().trim().isEmpty() ? Double.MAX_VALUE : Double.parseDouble(campoMax.getText().trim());
         
-        cargarProductosEnTabla(inventario.filtrarPorRangoPrecio(min, max));
-        
+        cargarProductosEnGrilla(inventario.filtrarPorRangoPrecio(min, max));  
     } catch (NumberFormatException ex) {
         JOptionPane.showMessageDialog(this, 
             "Por favor, ingresa montos numéricos válidos.", 
@@ -272,7 +272,7 @@ public class VentanaUsuario extends JFrame {
         btnBuscar.addActionListener(e -> {
             String texto = campoBuscar.getText().trim();
             if (!texto.isEmpty()) {
-                cargarProductosEnTabla(inventario.buscarPorNombre(texto));
+                cargarProductosEnGrilla(inventario.buscarPorNombre(texto));
             }
         });
         btnRefrescar.addActionListener(e -> actualizarVista());
@@ -280,15 +280,12 @@ public class VentanaUsuario extends JFrame {
             inventario.recargarDesdeArchivo();
             actualizarVista();
         });
-        estilizarBoton(btnChat, DORADO, TEXTO);
-        btnChat.addActionListener(e -> mostrarVentanaChat());
 
         busqueda.add(labelBuscar);
         busqueda.add(campoBuscar);
         busqueda.add(btnBuscar);
         busqueda.add(btnRefrescar);
         busqueda.add(btnActualizar);
-        busqueda.add(btnChat);
         busqueda.add(labelMin);
         busqueda.add(campoMin);
         busqueda.add(labelMax);
@@ -381,6 +378,42 @@ public class VentanaUsuario extends JFrame {
         ventana.setContentPane(contenido);
         ventana.setResizable(false);
     ventana.setVisible(true);
+    }
+    
+    // boton redondo de ayuda abajo a la derecha, abre el chat en vivo con el admin
+    private void crearBotonAyuda() {
+        JButton botonAyuda = new JButton("?") {
+            @Override
+            protected void paintComponent(Graphics g) {
+                // dibuja un circulo amarillo y despues el "?" encima
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(AMARILLO);
+                g2.fillOval(0, 0, getWidth() - 1, getHeight() - 1);
+                g2.dispose();
+                super.paintComponent(g);
+            }
+        };
+        // sin fondo ni borde cuadrado, asi solo se ve el circulo
+        botonAyuda.setContentAreaFilled(false);
+        botonAyuda.setBorderPainted(false);
+        botonAyuda.setFocusPainted(false);
+        botonAyuda.setForeground(TEXTO);
+        botonAyuda.setFont(new Font("SansSerif", Font.BOLD, 24));
+        botonAyuda.setToolTipText("¿Necesitas ayuda? Habla con un administrador");
+        botonAyuda.addActionListener(e -> mostrarVentanaChat());
+
+        // la capa PALETTE queda encima de todo lo demas de la ventana
+        JLayeredPane capas = getLayeredPane();
+        capas.add(botonAyuda, JLayeredPane.PALETTE_LAYER);
+
+        // si cambia el tamaño de la ventana, el boton vuelve a la esquina
+        capas.addComponentListener(new ComponentAdapter() {
+            @Override
+            public void componentResized(ComponentEvent e) {
+                botonAyuda.setBounds(capas.getWidth() - 80, capas.getHeight() - 80, 56, 56);
+            }
+        });
     }
 
     private void mostrarVentanaChat() {
@@ -656,36 +689,74 @@ public class VentanaUsuario extends JFrame {
         desconectarServidorChat();
     }
 
-    // arma la tabla del catalogo en el centro de la ventana
+    // arma la grilla de tarjetas del catalogo en el centro de la ventana
     private JPanel crearPanelCatalogo() {
-        // Tabla central con los productos disponibles para seleccionar.
         JPanel panel = new JPanel(new BorderLayout());
         panel.setBackground(FONDO);
         panel.setBorder(BorderFactory.createEmptyBorder(10, 16, 10, 16));
 
-        String[] columnas = {"ID", "Producto", "Precio", "Stock"};
-        modeloCatalogo = new DefaultTableModel(columnas, 0) {
-            @Override
-            public boolean isCellEditable(int row, int col) {
-                return false;
-            }
-        };
+        // 0 filas y 3 columnas: crea las filas que hagan falta
+        grillaCatalogo = new JPanel(new GridLayout(0, 3, 12, 12));
+        grillaCatalogo.setBackground(FONDO);
 
-        tablaCatalogo = new JTable(modeloCatalogo);
-        tablaCatalogo.setRowHeight(28);
-        tablaCatalogo.setSelectionMode(javax.swing.ListSelectionModel.SINGLE_SELECTION);
-        tablaCatalogo.getTableHeader().setBackground(AZUL_MARINO);
-        tablaCatalogo.getTableHeader().setForeground(MARFIL);
-        tablaCatalogo.setSelectionBackground(AMARILLO);
-        tablaCatalogo.setSelectionForeground(TEXTO);
-        tablaCatalogo.setGridColor(AZUL);
-        tablaCatalogo.setBackground(SUPERFICIE);
-        tablaCatalogo.setForeground(TEXTO_CLARO);
+        // la grilla va arriba para que las tarjetas no se estiren hacia abajo
+        JPanel contenedor = new JPanel(new BorderLayout());
+        contenedor.setBackground(FONDO);
+        contenedor.add(grillaCatalogo, BorderLayout.NORTH);
 
-        JScrollPane scrollCatalogo = new JScrollPane(tablaCatalogo);
-        scrollCatalogo.getViewport().setBackground(SUPERFICIE);
+        JScrollPane scrollCatalogo = new JScrollPane(contenedor);
+        scrollCatalogo.getViewport().setBackground(FONDO);
+        scrollCatalogo.getVerticalScrollBar().setUnitIncrement(16);
         panel.add(scrollCatalogo, BorderLayout.CENTER);
         return panel;
+    }
+
+    // una tarjeta por producto: imagen arriba, datos al medio y boton abajo
+    private JPanel crearTarjeta(Producto producto) {
+        JPanel tarjeta = new JPanel(new BorderLayout(0, 8));
+        tarjeta.setBackground(SUPERFICIE);
+        tarjeta.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(AZUL, 2),
+                BorderFactory.createEmptyBorder(12, 12, 12, 12)));
+
+        JLabel nombre = new JLabel(producto.getNombre());
+        nombre.setFont(new Font("SansSerif", Font.BOLD, 14));
+        nombre.setForeground(TEXTO);
+        JLabel precio = new JLabel("$" + producto.getPrecio());
+        precio.setFont(new Font("SansSerif", Font.BOLD, 16));
+        precio.setForeground(AZUL_MARINO);
+        JLabel stock = new JLabel("Stock: " + producto.getStock());
+        stock.setForeground(TEXTO_CLARO);
+
+        JPanel datos = new JPanel(new GridLayout(3, 1, 0, 4));
+        datos.setOpaque(false);
+        datos.add(nombre);
+        datos.add(precio);
+        datos.add(stock);
+
+        JButton btnAgregar = new JButton("Agregar al carrito");
+        estilizarBoton(btnAgregar, AMARILLO, TEXTO);
+        btnAgregar.addActionListener(e -> agregarAlCarrito(producto));
+
+        tarjeta.add(crearImagen(producto.getId()), BorderLayout.NORTH);
+        tarjeta.add(datos, BorderLayout.CENTER);
+        tarjeta.add(btnAgregar, BorderLayout.SOUTH);
+        return tarjeta;
+    }
+
+    // busca la foto en la carpeta imagenes con el id del producto, ej: imagenes/P03.png
+    private JLabel crearImagen(String id) {
+        JLabel imagen = new JLabel("sin imagen", SwingConstants.CENTER);
+        imagen.setForeground(TEXTO_CLARO);
+        imagen.setPreferredSize(new Dimension(0, 140));
+        java.io.File archivo = new java.io.File("imagenes/" + id + ".png");
+        if (archivo.exists()) {
+            // achica la foto a 130 px de alto sin deformarla
+            Image foto = new ImageIcon(archivo.getPath()).getImage().getScaledInstance(-1, 130, Image.SCALE_SMOOTH);
+            imagen.setIcon(new ImageIcon(foto));
+            imagen.setText("");
+        }
+        return imagen;
     }
 
     // arma el panel de abajo con el carrito y los botones
@@ -724,11 +795,6 @@ public class VentanaUsuario extends JFrame {
         campoCantidad.setCaretColor(TEXTO_CLARO);
         controles.add(campoCantidad);
 
-        JButton btnAgregar = new JButton("Agregar al carrito");
-        estilizarBoton(btnAgregar, AMARILLO, TEXTO);
-        btnAgregar.addActionListener(e -> agregarAlCarrito());
-        controles.add(btnAgregar);
-
         JButton btnComprar = new JButton("Comprar");
         estilizarBoton(btnComprar, NARANJA, MARFIL);
         btnComprar.addActionListener(e -> comprarProductos());
@@ -753,28 +819,18 @@ public class VentanaUsuario extends JFrame {
         boton.setBorder(BorderFactory.createEmptyBorder(8, 14, 8, 14));
     }
 
-    // llena la tabla con la lista de productos recibida
-    private void cargarProductosEnTabla(java.util.List<Producto> productos) {
-        // Reemplaza las filas del catálogo con los productos recibidos.
-        modeloCatalogo.setRowCount(0);
+    // borra las tarjetas y pone una por cada producto recibido
+    private void cargarProductosEnGrilla(java.util.List<Producto> productos) {
+        grillaCatalogo.removeAll();
         for (Producto p : productos) {
-            modeloCatalogo.addRow(new Object[]{
-                    p.getId(), p.getNombre(), "$" + p.getPrecio(), p.getStock()
-            });
+            grillaCatalogo.add(crearTarjeta(p));
         }
+        grillaCatalogo.revalidate();
+        grillaCatalogo.repaint();
     }
 
-    private void agregarAlCarrito() {
-        // toma el producto seleccionado en la tabla en vez de un id escrito a mano
-        int fila = tablaCatalogo.getSelectedRow();
-        if (fila == -1) {
-            JOptionPane.showMessageDialog(this, "Selecciona un producto de la tabla.",
-                    "Falta selección", JOptionPane.WARNING_MESSAGE);
-            return;
-        }
-        String id = (String) modeloCatalogo.getValueAt(fila, 0);
-        Producto producto = inventario.buscarProducto(id);
-
+    private void agregarAlCarrito(Producto producto) {
+        // el producto ahora llega desde el boton de su tarjeta
         int cantidad;
         try {
             cantidad = Integer.parseInt(campoCantidad.getText().trim());
@@ -884,8 +940,8 @@ public class VentanaUsuario extends JFrame {
 
     public void actualizarVista() {
         // Sincroniza catálogo, carrito y totales con los datos actuales de la compra.
-        // vuelve a llenar la tabla del catalogo con lo que hay en inventario
-        cargarProductosEnTabla(inventario.getListaProductos());
+        // vuelve a armar las tarjetas con lo que hay en inventario
+        cargarProductosEnGrilla(inventario.getListaProductos());
 
         // vuelve a llenar la tabla del carrito
         modeloCarrito.setRowCount(0);
