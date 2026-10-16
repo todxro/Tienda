@@ -720,44 +720,112 @@ public class VentanaUsuario extends JFrame {
      }
     
     private void mostrarCarrito() {
-    JDialog ventana = new JDialog(this, "Mi carrito", true);
-    ventana.setSize(850, 650);
+        JDialog ventana = new JDialog(this, "Mi carrito", true);
+        ventana.setSize(600, 650);
+        ventana.setLocationRelativeTo(this);
+        ventana.setResizable(false);
 
-
-    ventana.setLocationRelativeTo(this);
-
-        JPanel panel = new JPanel(new BorderLayout(10, 10));
+        JPanel panel = new JPanel(new BorderLayout(15, 15));
         panel.setBackground(FONDO);
-        panel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
+        panel.setBorder(BorderFactory.createEmptyBorder(25, 35, 25, 35));
+
+        JPanel encabezado = new JPanel(new BorderLayout());
+        encabezado.setBackground(FONDO);
+
+        JLabel titulo = new JLabel("TU CARRITO");
+        titulo.setFont(new Font("Serif", Font.PLAIN, 38));
+        titulo.setForeground(DORADO);
+
+        JLabel cantidadProductos = new JLabel("0 productos");
+        cantidadProductos.setFont(new Font("SansSerif", Font.PLAIN, 24));
+        cantidadProductos.setForeground(TEXTO_CLARO);
+
+        encabezado.add(titulo, BorderLayout.WEST);
+        encabezado.add(cantidadProductos, BorderLayout.EAST);
+
+        panel.add(encabezado, BorderLayout.NORTH);
+
+        JPanel centro = new JPanel(new BorderLayout());
+        centro.setBackground(SUPERFICIE);
+        centro.setBorder(BorderFactory.createLineBorder(
+            new Color(38, 34, 57), 2));
 
         String[] columnas = {"Producto", "Cantidad", "Subtotal"};
 
-    modeloCarrito = new DefaultTableModel(columnas, 0) {
-        @Override
-        public boolean isCellEditable(int fila, int columna) {
-            return false;
-        }
-    };
+        modeloCarrito = new DefaultTableModel(columnas, 0) {
+            @Override
+            public boolean isCellEditable(int fila, int columna) {
+                return false;
+            }
+        };
 
         tablaCarrito = new JTable(modeloCarrito);
-        tablaCarrito.setRowHeight(25);
-        tablaCarrito.getTableHeader().setBackground(AZUL_MARINO);
-        tablaCarrito.getTableHeader().setForeground(MARFIL);
+        tablaCarrito.setRowHeight(30);
         tablaCarrito.setBackground(SUPERFICIE);
         tablaCarrito.setForeground(TEXTO_CLARO);
+        tablaCarrito.setGridColor(new Color(45, 40, 65));
+
+        tablaCarrito.getTableHeader().setBackground(AZUL_MARINO);
+        tablaCarrito.getTableHeader().setForeground(MARFIL);
+        tablaCarrito.getTableHeader().setFont(
+            new Font("SansSerif", Font.BOLD, 14));
 
         JScrollPane scroll = new JScrollPane(tablaCarrito);
-        panel.add(scroll, BorderLayout.CENTER);
+        scroll.setBorder(BorderFactory.createEmptyBorder());
 
-        JPanel pie = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        centro.add(scroll, BorderLayout.CENTER);
+
+        panel.add(centro, BorderLayout.CENTER);
+
+        JPanel inferior = new JPanel(new BorderLayout(10, 10));
+        inferior.setBackground(FONDO);
+
+        // Resumen
+        JPanel resumen = new JPanel(new GridLayout(3, 2, 10, 5));
+        resumen.setBackground(FONDO);
+
+        JLabel labelSubtotal = new JLabel("Subtotal:");
+        JLabel valorSubtotal = new JLabel("$0");
+
+        JLabel labelIVA = new JLabel("IVA (19%):");
+        JLabel valorIVA = new JLabel("$0");
+
+        JLabel labelTotalTexto = new JLabel("TOTAL:");
+        JLabel valorTotal = new JLabel("$0");
+
+        labelSubtotal.setForeground(TEXTO_CLARO);
+        valorSubtotal.setForeground(TEXTO_CLARO);
+
+        labelIVA.setForeground(TEXTO_CLARO);
+        valorIVA.setForeground(TEXTO_CLARO);
+
+        labelTotalTexto.setForeground(TEXTO_CLARO);
+        valorTotal.setForeground(TEXTO_CLARO);
+
+        labelSubtotal.setFont(new Font("SansSerif", Font.PLAIN, 20));
+        valorSubtotal.setFont(new Font("SansSerif", Font.PLAIN, 20));
+
+        labelIVA.setFont(new Font("SansSerif", Font.PLAIN, 20));
+        valorIVA.setFont(new Font("SansSerif", Font.PLAIN, 20));
+
+        labelTotalTexto.setFont(new Font("Serif", Font.PLAIN, 27));
+        valorTotal.setFont(new Font("Serif", Font.PLAIN, 27));
+
+        resumen.add(labelSubtotal);
+        resumen.add(valorSubtotal);
+
+        resumen.add(labelIVA);
+        resumen.add(valorIVA);
+
+        resumen.add(labelTotalTexto);
+        resumen.add(valorTotal);
+
+        inferior.add(resumen, BorderLayout.CENTER);
+        // Botones
+        JPanel pie = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
         pie.setBackground(FONDO);
 
-        labelTotal = new JLabel();
-        labelTotal.setFont(new Font("SansSerif", Font.BOLD, 16));
-        labelTotal.setForeground(TEXTO_CLARO);
-        pie.add(labelTotal);
-
-       JButton btnComprar = new JButton("Comprar");
+        JButton btnComprar = new JButton("Comprar");
         estilizarBoton(btnComprar, NARANJA, MARFIL);
         btnComprar.addActionListener(e -> {
             ventana.dispose();
@@ -769,25 +837,55 @@ public class VentanaUsuario extends JFrame {
         estilizarBoton(btnVaciar, NARANJA, MARFIL);
         btnVaciar.addActionListener(e -> {
             if (carrito.getProductos().isEmpty()) {
-                    JOptionPane.showMessageDialog(this,
-                "El carrito ya está vacío.",
-                "Carrito",
-                JOptionPane.WARNING_MESSAGE);
-        return;
+                JOptionPane.showMessageDialog(this,
+                    "El carrito ya está vacío.",
+                    "Carrito",
+                    JOptionPane.WARNING_MESSAGE);
+            return;
         }
 
-        carrito.vaciarCarrito();
-        actualizarVista();
-    });
-
+            carrito.vaciarCarrito();
+            actualizarVista();
+        });
         pie.add(btnVaciar);
+
         JButton btnCerrar = new JButton("Cerrar");
         estilizarBoton(btnCerrar, AZUL_MARINO, MARFIL);
         btnCerrar.addActionListener(e -> ventana.dispose());
         pie.add(btnCerrar);
-        panel.add(pie, BorderLayout.SOUTH);
+
+        inferior.add(pie, BorderLayout.SOUTH);
+
+        panel.add(inferior, BorderLayout.SOUTH);
+
         ventana.add(panel);
+
+        // Actualiza la información del carrito
         actualizarVista();
+
+        // Cantidad de productos
+        int cantidad = 0;
+
+        for (Producto p : carrito.getProductos()) {
+            cantidad += carrito.getCantidad(p.getId());
+        }
+
+        cantidadProductos.setText(cantidad + " productos");
+
+        // Actualiza los valores
+        double subtotal = 0;
+
+        for (Producto p : carrito.getProductos()) {
+            subtotal += carrito.calcularSubtotal(p.getId());
+        }
+
+        double iva = subtotal * 0.19;
+        double total = subtotal + iva;
+
+        valorSubtotal.setText("$" + subtotal);
+        valorIVA.setText("$" + iva);
+        valorTotal.setText("$" + total);
+
         ventana.setVisible(true);
     }
 
