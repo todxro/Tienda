@@ -720,9 +720,11 @@ public class VentanaUsuario extends JFrame {
      }
     
     private void mostrarCarrito() {
-        JDialog ventana = new JDialog(this, "Mi carrito", true);
-        ventana.setSize(500, 400);
-        ventana.setLocationRelativeTo(this);
+    JDialog ventana = new JDialog(this, "Mi carrito", true);
+    ventana.setSize(850, 650);
+
+
+    ventana.setLocationRelativeTo(this);
 
         JPanel panel = new JPanel(new BorderLayout(10, 10));
         panel.setBackground(FONDO);
@@ -730,12 +732,12 @@ public class VentanaUsuario extends JFrame {
 
         String[] columnas = {"Producto", "Cantidad", "Subtotal"};
 
-        modeloCarrito = new DefaultTableModel(columnas, 0) {
-            @Override
-            public boolean isCellEditable(int fila, int columna) {
-                return false;
-            }
-        };
+    modeloCarrito = new DefaultTableModel(columnas, 0) {
+        @Override
+        public boolean isCellEditable(int fila, int columna) {
+            return false;
+        }
+    };
 
         tablaCarrito = new JTable(modeloCarrito);
         tablaCarrito.setRowHeight(25);
