@@ -755,7 +755,7 @@ public class VentanaUsuario extends JFrame {
         labelTotal.setForeground(TEXTO_CLARO);
         pie.add(labelTotal);
 
-        JButton btnComprar = new JButton("Comprar");
+       JButton btnComprar = new JButton("Comprar");
         estilizarBoton(btnComprar, NARANJA, MARFIL);
         btnComprar.addActionListener(e -> {
             ventana.dispose();
@@ -763,18 +763,31 @@ public class VentanaUsuario extends JFrame {
         });
         pie.add(btnComprar);
 
+        JButton btnVaciar = new JButton("Vaciar carrito");
+        estilizarBoton(btnVaciar, NARANJA, MARFIL);
+        btnVaciar.addActionListener(e -> {
+            if (carrito.getProductos().isEmpty()) {
+                    JOptionPane.showMessageDialog(this,
+                "El carrito ya está vacío.",
+                "Carrito",
+                JOptionPane.WARNING_MESSAGE);
+        return;
+        }
+
+        carrito.vaciarCarrito();
+        actualizarVista();
+    });
+
+        pie.add(btnVaciar);
         JButton btnCerrar = new JButton("Cerrar");
         estilizarBoton(btnCerrar, AZUL_MARINO, MARFIL);
         btnCerrar.addActionListener(e -> ventana.dispose());
         pie.add(btnCerrar);
-
         panel.add(pie, BorderLayout.SOUTH);
-        ventana.setContentPane(panel);
-
+        ventana.add(panel);
         actualizarVista();
         ventana.setVisible(true);
     }
-
 
 
     // le da el mismo estilo a los botones para no repetir codigo
