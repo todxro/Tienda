@@ -744,7 +744,7 @@ public class VentanaUsuario extends JFrame {
         return tarjeta;
     }
 
-    // busca la foto en la carpeta imagenes con el id del producto, ej: imagenes/P03.png
+    // busca la foto en la carpeta imagenes con el id del producto
     private JLabel crearImagen(String id) {
         JLabel imagen = new JLabel("sin imagen", SwingConstants.CENTER);
         imagen.setForeground(TEXTO_CLARO);
@@ -761,7 +761,7 @@ public class VentanaUsuario extends JFrame {
 
     // arma el panel de abajo con el carrito y los botones
     private JPanel crearPanelCarrito() {
-        // Panel inferior con cantidades, acciones de compra y resumen de precios.
+        // Panel inferior con cantidades, acciones de compra y resumen de precios
         JPanel panel = new JPanel(new BorderLayout(10, 10));
         panel.setBackground(FONDO);
         panel.setBorder(BorderFactory.createEmptyBorder(0, 16, 12, 16));

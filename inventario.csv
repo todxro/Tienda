@@ -1,6 +1,6 @@
 id,nombre,precio,stock,categoria
-"P02","Carta Pikachu",320000.0,3,"Pokemon"
-"P03","Sobre Pokemon TCG",7900.0,20,"Pokemon"
+"P02","Carta Pikachu",320000.0,2,"Pokemon"
+"P03","Sobre Pokemon TCG",7900.0,18,"Pokemon"
 "P04","Sobre Chaos Rising",7990.0,25,"Pokemon"
 "P05","Lata Pokeball con Sobres",19990.0,10,"Pokemon"
 "P06","Mazo Mega Lucario",44990.0,6,"Pokemon"
