@@ -6,6 +6,7 @@
       "name": "VentanaUsuario",
       "request": "launch",
       "mainClass": "tienda.VentanaUsuario",
+<<<<<<< HEAD
       "projectName": "Tienda_39e571b5"
     },
     {
@@ -14,6 +15,9 @@
       "request": "launch",
       "mainClass": "tienda.VentanaAdmin",
       "projectName": "Tienda_39e571b5"
+=======
+      "projectName": "Tienda_132b21a9"
+>>>>>>> edu
     },
     {
       "type": "java",
