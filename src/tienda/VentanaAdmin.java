@@ -12,6 +12,7 @@ import java.awt.Insets;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
@@ -22,9 +23,11 @@ import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import javax.imageio.ImageIO;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JDialog;
+import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
@@ -35,6 +38,7 @@ import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.ListSelectionModel;
 import javax.swing.SwingUtilities;
+import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.table.DefaultTableModel;
 
 
@@ -81,7 +85,7 @@ public class VentanaAdmin extends JFrame {
 
         // La tabla principal muestra el inventario sin permitir editar celdas directamente.
         modeloTabla = new DefaultTableModel(
-                new Object[] { "ID", "Producto", "Precio", "Stock", "Categoría" }, 0) {
+                new Object[] { "ID", "Producto", "Precio", "Stock", "Categoría", "Imagen" }, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
                 return false;
@@ -116,13 +120,16 @@ public class VentanaAdmin extends JFrame {
         agregarCampo(panelControles, "Categoría:", txtCategoria, 3);
 
         JButton btnAgregar = new JButton("Agregar producto");
-        JButton btnEditar = new JButton("Editar seleccionado");
+        JButton btnActualizar = new JButton("Actualizar producto");
         JButton btnBorrar = new JButton("Borrar seleccionado");
         JButton btnValorTotal = new JButton("Ver valor total");
+        JButton btnCargarImagen = new JButton("Cargar imagen");
         agregarBoton(panelControles, btnAgregar, 4);
-        agregarBoton(panelControles, btnEditar, 5);
+        agregarBoton(panelControles, btnActualizar, 5);
         agregarBoton(panelControles, btnBorrar, 6);
         agregarBoton(panelControles, btnValorTotal, 7);
+        agregarBoton(panelControles, btnCargarImagen, 8);
+        btnCargarImagen.addActionListener(e -> seleccionarImagenProducto());
 
         JPanel panelStock = new JPanel(new BorderLayout(12, 12));
         panelStock.setBackground(FONDO);
@@ -201,7 +208,7 @@ public class VentanaAdmin extends JFrame {
 
         tablaProductos.getSelectionModel().addListSelectionListener(e -> cargarSeleccion());
         btnAgregar.addActionListener(e -> agregarProducto());
-        btnEditar.addActionListener(e -> editarProducto());
+        btnActualizar.addActionListener(e -> actualizarProducto());
         btnBorrar.addActionListener(e -> borrarProducto());
         btnValorTotal.addActionListener(e -> JOptionPane.showMessageDialog(this,
                 "Valor total del inventario: $" + inventario.calcularValorTotalInventario()));
@@ -229,6 +236,55 @@ public class VentanaAdmin extends JFrame {
         }
         ventanaChat.setVisible(true);
         ventanaChat.toFront();
+    }
+
+    private void seleccionarImagenProducto() {
+        String id = idSeleccionado();
+        if (id == null) {
+            JOptionPane.showMessageDialog(this, "Selecciona un producto en la tabla.",
+                    "Falta selección", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        JFileChooser selector = new JFileChooser();
+        selector.setDialogTitle("Seleccionar imagen del producto " + id);
+        selector.setFileFilter(new FileNameExtensionFilter(
+                "Imágenes (PNG, JPG, JPEG, GIF, BMP)", "png", "jpg", "jpeg", "gif", "bmp"));
+        if (selector.showOpenDialog(this) != JFileChooser.APPROVE_OPTION) {
+            return;
+        }
+
+        File imagenSeleccionada = selector.getSelectedFile();
+        File carpetaImagenes = new File("imagenes");
+        File destino = new File(carpetaImagenes, id + ".png");
+        try {
+            if (!carpetaImagenes.isDirectory() && !carpetaImagenes.mkdirs()) {
+                throw new IOException("No se pudo crear la carpeta de imágenes.");
+            }
+
+            java.awt.image.BufferedImage imagen = ImageIO.read(imagenSeleccionada);
+            if (imagen == null) {
+                throw new IOException("El archivo seleccionado no contiene una imagen válida.");
+            }
+            if (destino.exists()) {
+                int respuesta = JOptionPane.showConfirmDialog(this,
+                        "El producto ya tiene una imagen. ¿Quieres reemplazarla?",
+                        "Reemplazar imagen", JOptionPane.YES_NO_OPTION);
+                if (respuesta != JOptionPane.YES_OPTION) {
+                    return;
+                }
+            }
+            if (!ImageIO.write(imagen, "png", destino)) {
+                throw new IOException("No se pudo guardar la imagen en formato PNG.");
+            }
+
+            refrescarTabla();
+            JOptionPane.showMessageDialog(this, "Imagen guardada para el producto " + id + ".",
+                    "Imagen cargada", JOptionPane.INFORMATION_MESSAGE);
+        } catch (IOException ex) {
+            JOptionPane.showMessageDialog(this, "No se pudo cargar la imagen: " + ex.getMessage(),
+                    "Error al cargar imagen", JOptionPane.ERROR_MESSAGE);
+        }
     }
 
     private JPanel crearPanelChat() {
@@ -526,8 +582,8 @@ public class VentanaAdmin extends JFrame {
         }
     }
 
-    private void editarProducto() {
-        // Toma el producto seleccionado y guarda los nuevos valores ingresados.
+    private void actualizarProducto() {
+        // Guarda los cambios usando el ID del producto seleccionado, no su nombre.
         String id = idSeleccionado();
         if (id == null) {
             mostrarSeleccion();
@@ -597,8 +653,9 @@ public class VentanaAdmin extends JFrame {
         // Vuelve a construir las filas visibles usando la lista actual del inventario.
         modeloTabla.setRowCount(0);
         for (Producto producto : inventario.getListaProductos()) {
+            File imagen = new File("imagenes", producto.getId() + ".png");
             modeloTabla.addRow(new Object[] { producto.getId(), producto.getNombre(), producto.getPrecio(),
-                    producto.getStock(), producto.getCategoria() });
+                    producto.getStock(), producto.getCategoria(), imagen.isFile() ? "Sí" : "No" });
         }
     }
 
