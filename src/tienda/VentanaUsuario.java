@@ -25,6 +25,15 @@ import javax.swing.text.BadLocationException;
 import javax.swing.text.DocumentFilter;
 
 // Presenta el catálogo, la compra, el inicio de sesión y el chat del cliente.
+// Índice por línea:
+// - Acceso y registro: crearPanelLogin (105), mostrarRegistro (166)
+// - Catálogo y búsqueda: mostrarCatalogo (209), crearPanelBusqueda (226), crearPanelCatalogo (704),
+//   crearTarjeta (726), crearImagen (759), ajustarImagen (781), cargarProductosEnGrilla (1019)
+// - Cuenta y compra: mostrarCuenta (338), crearPanelAcciones (800), mostrarCarrito (826),
+//   agregarAlCarrito (1028), comprarProductos (1069), actualizarVista (1139)
+// - Ayuda y chat: crearBotonAyuda (395), mostrarVentanaChat (430), crearPanelChat (444),
+//   conexión y mensajes (491-699)
+// - Interfaz e inicio: estilizarBoton (1010), main (1175)
 public class VentanaUsuario extends JFrame {
     private static final String HOST_CHAT = "172.26.39.8";
     private static final int PUERTO_CHAT = 65432;

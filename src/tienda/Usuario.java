@@ -1,21 +1,18 @@
 package tienda;
 
-import java.util.Date;
-
 // Cuenta de cliente que conserva su propio carrito de compras.
 public class Usuario extends Cuenta {
     // carrito personal del usuario
     private Carrito carrito;
 
-    // crea un usuario con un carrito vacio
-    public Usuario(String nombre, String apellido, String contrasenia, String direccion, String pais, String comuna, String region, String correo, int numeroDeTelefono, Date fechadeNacimiento, String rut) {
-        super(nombre, apellido, contrasenia, direccion, correo, rut);
-
+    // crea un usuario con un carrito vacío
+    public Usuario(String nombre, String apellido, String contrasenia, String correo, String rut) {
+        super(nombre, apellido, contrasenia, correo, rut);
         this.carrito = new Carrito();
     }
 
+    // entrega el carrito del usuario
     public Carrito getCarrito() {
-        // entrega el carrito del usuario
         return carrito;
     }
 }

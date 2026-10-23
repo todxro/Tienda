@@ -1,6 +1,5 @@
 package tienda;
 
-
 // Representa un artículo del catálogo junto con su precio y existencias.
 public class Producto {
     // datos que identifican al producto
@@ -19,30 +18,58 @@ public class Producto {
         this.categoria = categoria;
     }
 
-    public String getId() { return id; }
-    public String getNombre() { return nombre; }
-    public void setNombre(String nombre) { this.nombre = nombre; }
-    public double getPrecio() { return precio; }
-    public int getStock() { return stock; }
+    // entrega el identificador del producto
+    public String getId() {
+        return id;
+    }
+
+    // entrega el nombre del producto
+    public String getNombre() {
+        return nombre;
+    }
+
+    // cambia el nombre del producto
+    public void setNombre(String nombre) {
+        this.nombre = nombre;
+    }
+
+    // entrega el precio del producto
+    public double getPrecio() {
+        return precio;
+    }
+
+    // cambia el precio si es válido
+    public void setPrecio(double precio) {
+        if (precio >= 0) {
+            this.precio = precio;
+        } else {
+            System.out.println("Error: el precio no puede ser negativo");
+        }
+    }
+
+    // entrega el stock disponible del producto
+    public int getStock() {
+        return stock;
+    }
+
+    // cambia el stock si es válido
     public void setStock(int stock) {
-        // evita guardar un stock negativo
         if (stock >= 0) {
             this.stock = stock;
         } else {
             System.out.println("Error: el stock no puede ser negativo");
         }
     }
-        public String getCategoria() { return categoria; }
-    public void setPrecio(double precio) { 
-        // evita guardar un precio negativo
-        if (precio >= 0) {
-        this.precio = precio; 
-        }
-        else {
-            System.out.println ("Error: el precio no puede ser negativo");
-        }
+
+    // entrega la categoría del producto
+    public String getCategoria() {
+        return categoria;
     }
-    public void setCategoria (String categoria) { this.categoria = categoria; }
+
+    // cambia la categoría del producto
+    public void setCategoria(String categoria) {
+        this.categoria = categoria;
+    }
 
     @Override
     public String toString() {

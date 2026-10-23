@@ -43,6 +43,16 @@ import javax.swing.table.DefaultTableModel;
 
 
 // Reúne las vistas y acciones con las que administración mantiene la tienda.
+// Índice por línea:
+// - Inicio y navegación: constructor VentanaAdmin (88), mostrarVentas (512)
+// - Productos e imágenes: seleccionarImagenProducto (250), agregarProducto (575),
+//   actualizarProducto (594), borrarProducto (616), idSeleccionado (633), cargarSeleccion (642)
+// - Chat de administración: mostrarVentanaChat (237), crearPanelChat (299), enviarMensajeChat (333),
+//   conexión y mensajes (348-507), formato JSON (419-449)
+// - Interfaz y formularios: estilizarBotonStock (532), agregarCampo (540), agregarBoton (560),
+//   actualizarVista (657), refrescarTabla (661), categoriaIngresada (671), limpiarCampos (676),
+//   mostrarSeleccion (684), mostrarDatosInvalidos (689)
+// - Inicio de la aplicación: main (695)
 public class VentanaAdmin extends JFrame {
     private static final String HOST_CHAT = "172.26.39.8";
     private static final int PUERTO_CHAT = 65432;
