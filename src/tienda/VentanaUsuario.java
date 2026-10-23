@@ -846,6 +846,7 @@ public class VentanaUsuario extends JFrame {
             new Color(38, 34, 57), 2));
 
         String[] columnas = {"Producto", "Cantidad", "Subtotal"};
+            
 
         modeloCarrito = new DefaultTableModel(columnas, 0) {
             @Override
@@ -954,7 +955,18 @@ public class VentanaUsuario extends JFrame {
         panel.add(inferior, BorderLayout.SOUTH);
 
         ventana.add(panel);
-
+        JButton btnEliminar = new JButton("Eliminar producto");
+        estilizarBoton(btnEliminar, NARANJA, MARFIL);
+        btnEliminar.addActionListener(e -> {
+            int filaSeleccionada = tablaCarrito.getSelectedRow();
+            if (filaSeleccionada >= 0) {
+                carrito.quitarUnidad(filaSeleccionada);
+                inventario.guardarEnArchivo(); // persiste la reserva
+                ventana.dispose();
+                mostrarCarrito();
+            }
+        });
+        pie.add(btnEliminar);
         // Actualiza la información del carrito
         actualizarVista();
 
@@ -1034,6 +1046,7 @@ public class VentanaUsuario extends JFrame {
             }
             agregadas++;
         }
+        inventario.guardarEnArchivo(); // persiste la reserva
 
         if (agregadas == 0) {
             JOptionPane.showMessageDialog(this, "No hay stock suficiente para ese producto.", "Stock insuficiente",
