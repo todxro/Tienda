@@ -48,7 +48,6 @@ public class VentanaAdmin extends JFrame {
     private static final int PUERTO_CHAT = 65432;
     private static final Color AZUL = new Color(34, 96, 176);
     private static final Color AZUL_MARINO = new Color(18, 67, 121);
-    private static final Color NARANJA = new Color(244, 132, 54);
     private static final Color AMARILLO = new Color(250, 204, 76);
     private static final Color DORADO = AMARILLO;
     private static final Color FONDO = new Color(232, 217, 195);

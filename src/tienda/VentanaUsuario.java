@@ -697,8 +697,8 @@ public class VentanaUsuario extends JFrame {
         panel.setBackground(FONDO);
         panel.setBorder(BorderFactory.createEmptyBorder(10, 16, 10, 16));
 
-        // 0 filas y 3 columnas: crea las filas que hagan falta
-        grillaCatalogo = new JPanel(new GridLayout(0, 3, 12, 12));
+        // 0 filas y 4 columnas: crea las filas que hagan falta
+        grillaCatalogo = new JPanel(new GridLayout(0, 5, 12, 12));
         grillaCatalogo.setBackground(FONDO);
 
         // la grilla va arriba para que las tarjetas no se estiren hacia abajo
@@ -750,15 +750,42 @@ public class VentanaUsuario extends JFrame {
     private JLabel crearImagen(String id) {
         JLabel imagen = new JLabel("sin imagen", SwingConstants.CENTER);
         imagen.setForeground(TEXTO_CLARO);
-        imagen.setPreferredSize(new Dimension(0, 140));
+        imagen.setPreferredSize(new Dimension(0, 220));
         java.io.File archivo = new java.io.File("imagenes/" + id + ".png");
         if (archivo.exists()) {
-            // achica la foto a 130 px de alto sin deformarla
-            Image foto = new ImageIcon(archivo.getPath()).getImage().getScaledInstance(-1, 130, Image.SCALE_SMOOTH);
-            imagen.setIcon(new ImageIcon(foto));
-            imagen.setText("");
+            ImageIcon iconoOriginal = new ImageIcon(archivo.getPath());
+            Image fotoOriginal = iconoOriginal.getImage();
+            if (iconoOriginal.getIconWidth() > 0 && iconoOriginal.getIconHeight() > 0) {
+                imagen.setText("");
+                imagen.addComponentListener(new ComponentAdapter() {
+                    @Override
+                    public void componentResized(ComponentEvent e) {
+                        ajustarImagen(imagen, fotoOriginal);
+                    }
+                });
+                ajustarImagen(imagen, fotoOriginal);
+            }
         }
         return imagen;
+    }
+
+    private void ajustarImagen(JLabel etiqueta, Image imagenOriginal) {
+        int anchoDisponible = Math.min(etiqueta.getWidth() - 16, 280);
+        int altoDisponible = etiqueta.getHeight() - 16;
+        if (anchoDisponible <= 0) {
+            anchoDisponible = 260;
+        }
+        if (altoDisponible <= 0) {
+            altoDisponible = 204;
+        }
+
+        double escala = Math.min(
+                (double) anchoDisponible / imagenOriginal.getWidth(null),
+                (double) altoDisponible / imagenOriginal.getHeight(null));
+        int ancho = Math.max(1, (int) (imagenOriginal.getWidth(null) * escala));
+        int alto = Math.max(1, (int) (imagenOriginal.getHeight(null) * escala));
+        Image fotoEscalada = imagenOriginal.getScaledInstance(ancho, alto, Image.SCALE_SMOOTH);
+        etiqueta.setIcon(new ImageIcon(fotoEscalada));
     }
     
     private JPanel crearPanelAcciones() {

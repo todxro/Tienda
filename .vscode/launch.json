@@ -3,59 +3,21 @@
   "configurations": [
     {
       "type": "java",
-      "name": "VentanaUsuario",
+      "name": "Tienda - Cliente",
       "request": "launch",
       "mainClass": "tienda.VentanaUsuario",
-<<<<<<< HEAD
-      "projectName": "Tienda_39e571b5"
-    },
-    {
-      "type": "java",
-      "name": "VentanaAdmin",
-      "request": "launch",
-      "mainClass": "tienda.VentanaAdmin",
-      "projectName": "Tienda_39e571b5"
-=======
-      "projectName": "Tienda_132b21a9"
->>>>>>> edu
-    },
-    {
-      "type": "java",
-      "name": "VentanaUsuario",
-      "request": "launch",
-      "mainClass": "tienda.VentanaUsuario",
-      "projectName": "Tienda_1ab1fcb7"
-    },
-    {
-      "type": "java",
-      "name": "VentanaAdmin",
-      "request": "launch",
-      "mainClass": "tienda.VentanaAdmin",
-      "projectName": "Tienda_1ab1fcb7"
-    },
-    {
-      "type": "java",
-      "name": "VentanaUsuario",
-      "request": "launch",
-      "mainClass": "tienda.VentanaUsuario",
-      "projectName": "Tienda_4c68dbd1"
-    },
-    {
-      "type": "java",
-      "name": "VentanaAdmin",
-      "request": "launch",
-      "mainClass": "tienda.VentanaAdmin",
-      "projectName": "Tienda_4c68dbd1"
-    },
-    {
-      "name": "Run Tienda (VentanaAdmin)",
-      "type": "java",
-      "request": "launch",
-      "mainClass": "tienda.VentanaAdmin",
-      "projectName": "Tienda",
       "cwd": "${workspaceFolder}",
-      "console": "integratedTerminal",
-      "classpath": "${workspaceFolder}/bin"
+      "classPaths": ["${workspaceFolder}/bin"],
+      "console": "integratedTerminal"
+    },
+    {
+      "type": "java",
+      "name": "Tienda - Administrador",
+      "request": "launch",
+      "mainClass": "tienda.VentanaAdmin",
+      "cwd": "${workspaceFolder}",
+      "classPaths": ["${workspaceFolder}/bin"],
+      "console": "integratedTerminal"
     }
   ]
 }
