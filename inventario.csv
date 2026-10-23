@@ -1,7 +1,7 @@
 id,nombre,precio,stock,categoria
-"P02","Carta Pikachu",320000.0,0,"Pokemon"
+"P02","Carta Pikachu",320000.0,4,"Pokemon"
 "P03","Sobre Pokemon TCG",7900.0,16,"Pokemon"
-"P04","Sobre Chaos Rising",7990.0,24,"Pokemon"
+"P04","Pokémon Chaos Rising Sobre",7990.0,24,"Pokemon"
 "P05","Lata Pokeball con Sobres",19990.0,10,"Pokemon"
 "P06","Mazo Mega Lucario",44990.0,8,"Pokemon"
 "P07","Caja Entrenador Elite",64990.0,5,"Pokemon"
