@@ -2,6 +2,11 @@
 
 Aplicación de escritorio en Java Swing para gestionar un catálogo, registrar compras y consultar ventas.
 
+## Enlaces de entrega
+
+- Repositorio: [https://github.com/todxro/Tienda](https://github.com/todxro/Tienda)
+- Video de demostración: pendiente de grabar y publicar.
+
 ## Índice del proyecto
 
 ### Interfaz
@@ -24,17 +29,35 @@ catálogo, compra, chat e inicio de la aplicación.
 
 ## Compilar y ejecutar
 
-Se necesita Java 11 o posterior. Desde la carpeta raíz del proyecto, ejecuta en PowerShell:
+Se necesita Java 11 o posterior, con `java`, `javac` y `jar` disponibles en el `PATH`.
+Desde la carpeta raíz del proyecto, compila ambas interfaces en PowerShell:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\build.ps1
+```
+
+El script crea `Tienda-Usuario.jar` y `Tienda-Admin.jar` en la raíz. Para ejecutar el cliente:
+
+```powershell
+java -jar .\Tienda-Usuario.jar
+```
+
+Para abrir el panel de administración:
+
+```powershell
+java -jar .\Tienda-Admin.jar
+```
+
+Ejecuta los comandos desde la carpeta raíz del proyecto para que la aplicación encuentre
+`inventario.csv`, `usuarios.csv`, `ventas.csv` e `imagenes/`. Esos archivos deben mantenerse
+junto a los JAR; los ejecutables no incluyen los datos ni las imágenes.
+
+También puedes compilar manualmente y ejecutar desde `bin`:
 
 ```powershell
 javac -encoding UTF-8 -d bin src\tienda\*.java
 java -cp bin tienda.VentanaUsuario
-```
-
-Para abrir el panel de administración, usa:
-
-```powershell
 java -cp bin tienda.VentanaAdmin
 ```
 
-En VS Code también puedes seleccionar **Tienda - Cliente** o **Tienda - Administrador** en las configuraciones de ejecución.
+En VS Code puedes seleccionar **Tienda - Cliente** o **Tienda - Administrador** en las configuraciones de ejecución.
