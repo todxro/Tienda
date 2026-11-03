@@ -5,20 +5,9 @@ import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
-import java.io.PrintWriter;
-import java.net.InetSocketAddress;
-import java.net.Socket;
-import java.nio.charset.StandardCharsets;
 import java.text.NumberFormat;
-import java.util.ArrayDeque;
 import java.util.Locale;
-import java.util.Queue;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.text.AbstractDocument;
@@ -26,19 +15,11 @@ import javax.swing.text.AttributeSet;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.DocumentFilter;
 
-// Presenta el catálogo, la compra, el inicio de sesión y el chat del cliente.
-// Índice por línea:
-// - Acceso y registro: crearPanelLogin (105), mostrarRegistro (166)
-// - Catálogo y búsqueda: mostrarCatalogo (209), crearPanelBusqueda (236), crearPanelCatalogo (714),
-//   crearTarjeta (736), crearImagen (769), ajustarImagen (791), cargarProductosEnGrilla (1031)
-// - Cuenta y compra: mostrarCuenta (348), crearPanelAcciones (810), mostrarCarrito (836),
-//   agregarAlCarrito (1040), comprarProductos (1081), actualizarVista (1151)
-// - Ayuda y chat: crearBotonAyuda (405), mostrarVentanaChat (440), crearPanelChat (454),
-//   conexión y mensajes (491-699)
-// - Interfaz e inicio: estilizarBoton (1022), main (1208)
+// Presenta el catálogo, la compra, el inicio de sesión y las consultas de productos con Gemini.
+// Métodos principales: crearPanelLogin, mostrarRegistro, mostrarCatalogo, crearPanelBusqueda,
+// crearPanelCatalogo, crearTarjeta, consultarProducto, mostrarVentanaChat, mostrarCuenta,
+// mostrarCarrito, agregarAlCarrito, comprarProductos y actualizarVista.
 public class VentanaUsuario extends JFrame {
-    private static final String HOST_CHAT = "172.26.39.8";
-    private static final int PUERTO_CHAT = 65432;
     private static final Color AZUL        = new Color(34, 96, 176);
     private static final Color AZUL_MARINO = new Color(18, 67, 121);
     private static final Color NARANJA     = new Color(244, 132, 54);
@@ -74,16 +55,11 @@ public class VentanaUsuario extends JFrame {
     private JButton botonIniciarSesion;
     private JButton botonCarrito;
     private final JTextArea areaChat = new JTextArea();
-    private final JLabel estadoChat = new JLabel("Desconectado");
+    private final JLabel estadoChat = new JLabel("Asistente de productos");
     private final JTextField campoMensajeChat = new JTextField();
     private final JButton botonEnviarChat = new JButton("Enviar");
-    private final Queue<String> mensajesPendientesChat = new ArrayDeque<>();
+    private final StringBuilder historialChatGemini = new StringBuilder();
     private JDialog ventanaChat;
-    private volatile Socket socketChat;
-    private volatile PrintWriter salidaChat;
-    private volatile boolean clienteChatCerrado;
-    private volatile boolean chatConectando;
-    
 
     public VentanaUsuario() {
         this(null);
@@ -102,13 +78,7 @@ public class VentanaUsuario extends JFrame {
         // Las tarjetas permiten cambiar de sección dentro de la misma ventana.
         paneles.add(crearPanelLogin(), "login");
         mostrarCatalogo();
-        crearBotonAyuda();    
-        addWindowListener(new WindowAdapter() {
-            @Override
-            public void windowClosing(WindowEvent e) {
-                cerrarClienteChat();
-            }
-        });
+        crearBotonAyuda();
         setLocationRelativeTo(null);
         setExtendedState(JFrame.MAXIMIZED_BOTH);
     }
@@ -402,7 +372,7 @@ public class VentanaUsuario extends JFrame {
     ventana.setVisible(true);
     }
     
-    // boton redondo de ayuda abajo a la derecha, abre el chat en vivo con el admin
+    // Botón de acceso rápido al asistente de productos con Gemini.
     private void crearBotonAyuda() {
         JButton botonAyuda = new JButton("?") {
             @Override
@@ -422,7 +392,7 @@ public class VentanaUsuario extends JFrame {
         botonAyuda.setFocusPainted(false);
         botonAyuda.setForeground(TEXTO);
         botonAyuda.setFont(new Font("SansSerif", Font.BOLD, 24));
-        botonAyuda.setToolTipText("¿Necesitas ayuda? Habla con un administrador");
+        botonAyuda.setToolTipText("¿Tienes dudas sobre los productos? Pregunta a Gemini");
         botonAyuda.addActionListener(e -> mostrarVentanaChat());
 
         // la capa PALETTE queda encima de todo lo demas de la ventana
@@ -440,31 +410,22 @@ public class VentanaUsuario extends JFrame {
 
     private void mostrarVentanaChat() {
         if (ventanaChat == null) {
-            ventanaChat = new JDialog(this, "Chat con administración", false);
+            ventanaChat = new JDialog(this, "Asistente de productos", false);
             ventanaChat.setDefaultCloseOperation(JDialog.HIDE_ON_CLOSE);
             ventanaChat.setContentPane(crearPanelChat());
             ventanaChat.setResizable(false);
-            ventanaChat.setSize(480, 360);
+            ventanaChat.setSize(520, 400);
             ventanaChat.setLocationRelativeTo(this);
         }
         ventanaChat.setVisible(true);
         ventanaChat.toFront();
-        conectarChat();
     }
 
     private JPanel crearPanelChat() {
-        // Vista del cliente para conectarse y conversar con el servidor de administración.
+        // Chat general de productos; las consultas se envían a Gemini en segundo plano.
         JPanel panel = new JPanel(new BorderLayout(10, 10));
         panel.setBackground(FONDO);
         panel.setBorder(BorderFactory.createEmptyBorder(16, 16, 16, 16));
-
-        JPanel encabezado = new JPanel(new BorderLayout(8, 0));
-        encabezado.setBackground(FONDO);
-        JButton botonCerrar = new JButton("Cerrar chat");
-        estilizarBoton(botonCerrar, AZUL_MARINO, MARFIL);
-        botonCerrar.addActionListener(e -> ventanaChat.setVisible(false));
-
-        encabezado.add(botonCerrar, BorderLayout.WEST);
 
         areaChat.setEditable(false);
         areaChat.setLineWrap(true);
@@ -472,6 +433,10 @@ public class VentanaUsuario extends JFrame {
         areaChat.setBackground(SUPERFICIE);
         areaChat.setForeground(TEXTO_CLARO);
         areaChat.setCaretColor(TEXTO_CLARO);
+        if (areaChat.getText().isEmpty()) {
+            areaChat.setText("Asistente: Hola, puedo responder tus dudas sobre los productos del catálogo."
+                    + System.lineSeparator());
+        }
         JScrollPane scrollChat = new JScrollPane(areaChat);
         scrollChat.getViewport().setBackground(SUPERFICIE);
 
@@ -481,234 +446,74 @@ public class VentanaUsuario extends JFrame {
         campoMensajeChat.setForeground(TEXTO_CLARO);
         campoMensajeChat.setCaretColor(TEXTO_CLARO);
         estilizarBoton(botonEnviarChat, NARANJA, MARFIL);
-        botonEnviarChat.setEnabled(false);
-        botonEnviarChat.addActionListener(e -> enviarMensajeChat());
-        campoMensajeChat.addActionListener(e -> enviarMensajeChat());
+        botonEnviarChat.addActionListener(e -> enviarConsultaGemini());
+        campoMensajeChat.addActionListener(e -> enviarConsultaGemini());
         panelEnvio.add(campoMensajeChat, BorderLayout.CENTER);
         panelEnvio.add(botonEnviarChat, BorderLayout.EAST);
 
         JPanel pie = new JPanel(new BorderLayout(8, 0));
         pie.setBackground(FONDO);
         estadoChat.setForeground(TEXTO_CLARO);
-        pie.add(estadoChat, BorderLayout.WEST);
+        pie.add(estadoChat, BorderLayout.NORTH);
         pie.add(panelEnvio, BorderLayout.CENTER);
 
-        panel.add(encabezado, BorderLayout.NORTH);
         panel.add(scrollChat, BorderLayout.CENTER);
         panel.add(pie, BorderLayout.SOUTH);
         return panel;
     }
 
-    private void conectarChat() {
-        // Abre el socket en segundo plano para que la ventana siga respondiendo.
-        if (chatConectando || (socketChat != null && !socketChat.isClosed())) {
-            return;
-        }
-        clienteChatCerrado = false;
-        chatConectando = true;
-        botonEnviarChat.setEnabled(false);
-        estadoChat.setText("Conectando...");
-
-        Thread hiloConexion = new Thread(() -> {
-            Socket nuevaConexion = new Socket();
-            try {
-                nuevaConexion.connect(new InetSocketAddress(HOST_CHAT, PUERTO_CHAT), 5000);
-                PrintWriter nuevaSalida = new PrintWriter(
-                        new OutputStreamWriter(nuevaConexion.getOutputStream(), StandardCharsets.UTF_8), true);
-                if (clienteChatCerrado) {
-                    nuevaConexion.close();
-                    return;
-                }
-                socketChat = nuevaConexion;
-                salidaChat = nuevaSalida;
-                SwingUtilities.invokeLater(() -> {
-                    estadoChat.setText("Conectado a " + HOST_CHAT + ":" + PUERTO_CHAT);
-                    botonEnviarChat.setEnabled(true);
-                    enviarMensajesPendientesChat();
-                });
-
-                Thread hiloRecepcion = new Thread(() -> recibirMensajesChat(nuevaConexion), "recepcion-chat");
-                hiloRecepcion.setDaemon(true);
-                hiloRecepcion.start();
-            } catch (IOException ex) {
-                try {
-                    nuevaConexion.close();
-                } catch (IOException errorCierre) {
-                    ex.addSuppressed(errorCierre);
-                }
-                chatConectando = false;
-                if (!clienteChatCerrado) {
-                    SwingUtilities.invokeLater(() -> {
-                        estadoChat.setText("No se pudo conectar: " + ex.getMessage());
-                        areaChat.append("Error de conexión: " + ex.getMessage() + System.lineSeparator());
-                    });
-                }
-            }
-        }, "conexion-chat");
-        hiloConexion.setDaemon(true);
-        hiloConexion.start();
-    }
-
-    private void enviarMensajeChat() {
+    private void enviarConsultaGemini() {
         String mensaje = campoMensajeChat.getText().trim();
-        if (mensaje.isEmpty()) {
+        if (mensaje.isEmpty() || !botonEnviarChat.isEnabled()) {
             return;
         }
         campoMensajeChat.setText("");
         areaChat.append("Tú: " + mensaje + System.lineSeparator());
+        botonEnviarChat.setEnabled(false);
+        campoMensajeChat.setEnabled(false);
+        estadoChat.setText("Consultando a Gemini...");
 
-        if (salidaChat == null || socketChat == null || socketChat.isClosed()) {
-            synchronized (mensajesPendientesChat) {
-                mensajesPendientesChat.add(mensaje);
-            }
-            estadoChat.setText("Mensaje pendiente; conectando...");
-            conectarChat();
-            return;
+        StringBuilder contexto = new StringBuilder("Productos disponibles en el catálogo:\n");
+        for (Producto producto : inventario.getListaProductos()) {
+            contexto.append("- ").append(producto.getNombre())
+                    .append(" | categoría: ").append(producto.getCategoria())
+                    .append(" | precio: $").append(producto.getPrecio())
+                    .append(" | stock: ").append(producto.getStock()).append('\n');
         }
+        contexto.append("\nConversación anterior:\n").append(historialChatGemini)
+                .append("\nPregunta del cliente: ").append(mensaje);
 
-        try {
-            enviarMensajeAlServidor(crearMensajeJson(mensaje));
-        } catch (IOException ex) {
-            synchronized (mensajesPendientesChat) {
-                mensajesPendientesChat.add(mensaje);
+        new SwingWorker<String, Void>() {
+            @Override
+            protected String doInBackground() throws Exception {
+                return GeminiAPIClient.responder(contexto.toString());
             }
-            estadoChat.setText("Mensaje pendiente; reconectando...");
-            desconectarServidorChat();
-            conectarChat();
-        }
-    }
 
-    private void enviarMensajesPendientesChat() {
-        while (salidaChat != null && socketChat != null && !socketChat.isClosed()) {
-            String mensaje;
-            synchronized (mensajesPendientesChat) {
-                mensaje = mensajesPendientesChat.peek();
-            }
-            if (mensaje == null) {
-                return;
-            }
-            try {
-                enviarMensajeAlServidor(crearMensajeJson(mensaje));
-                synchronized (mensajesPendientesChat) {
-                    mensajesPendientesChat.remove();
-                }
-            } catch (IOException ex) {
-                estadoChat.setText("No se pudo enviar el mensaje: " + ex.getMessage());
-                desconectarServidorChat();
-                return;
-            }
-        }
-    }
-
-    private void recibirMensajesChat(Socket socket) {
-        // Escucha mensajes del administrador y actualiza la conversación en pantalla.
-        try (BufferedReader entrada = new BufferedReader(
-                new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8))) {
-            String mensaje;
-            while ((mensaje = entrada.readLine()) != null) {
-                String contenido = extraerCampoJson(mensaje, "content");
-                if ("message".equals(extraerCampoJson(mensaje, "type")) && contenido != null) {
-                    SwingUtilities.invokeLater(
-                            () -> areaChat.append("Admin: " + contenido + System.lineSeparator()));
+            @Override
+            protected void done() {
+                try {
+                    String respuesta = get();
+                    areaChat.append("Gemini: " + respuesta + System.lineSeparator());
+                    historialChatGemini.append("Cliente: ").append(mensaje)
+                            .append("\nAsistente: ").append(respuesta).append('\n');
+                    estadoChat.setText("Asistente de productos");
+                } catch (InterruptedException ex) {
+                    Thread.currentThread().interrupt();
+                    areaChat.append("Error: se interrumpió la consulta." + System.lineSeparator());
+                    estadoChat.setText("Consulta interrumpida");
+                } catch (java.util.concurrent.ExecutionException ex) {
+                    Throwable causa = ex.getCause();
+                    String detalle = causa == null || causa.getMessage() == null
+                            ? ex.getMessage() : causa.getMessage();
+                    areaChat.append("Error al consultar: " + detalle + System.lineSeparator());
+                    estadoChat.setText("No se pudo completar la consulta");
+                } finally {
+                    botonEnviarChat.setEnabled(true);
+                    campoMensajeChat.setEnabled(true);
+                    campoMensajeChat.requestFocusInWindow();
                 }
             }
-        } catch (IOException ex) {
-            if (!clienteChatCerrado && socketChat == socket) {
-                SwingUtilities.invokeLater(
-                        () -> estadoChat.setText("Conexión interrumpida: " + ex.getMessage()));
-            }
-        } finally {
-            boolean conexionActual = socketChat == socket;
-            if (socketChat == socket) {
-                socketChat = null;
-                salidaChat = null;
-            }
-            try {
-                socket.close();
-            } catch (IOException ex) {
-                if (!clienteChatCerrado && conexionActual) {
-                    SwingUtilities.invokeLater(
-                            () -> estadoChat.setText("No se pudo cerrar la conexión: " + ex.getMessage()));
-                }
-            }
-            if (!clienteChatCerrado && conexionActual) {
-                chatConectando = false;
-                SwingUtilities.invokeLater(() -> {
-                    estadoChat.setText("Desconectado");
-                    botonEnviarChat.setEnabled(false);
-                });
-            }
-        }
-    }
-
-    private String crearMensajeJson(String contenido) {
-        // Empaqueta cada texto con el formato JSON que entiende el servidor.
-        return "{\"type\":\"message\",\"content\":\"" + escaparJson(contenido) + "\"}";
-    }
-
-    private String extraerCampoJson(String json, String campo) {
-        Pattern patron = Pattern.compile("\"" + Pattern.quote(campo)
-                + "\"\\s*:\\s*\"((?:\\\\.|[^\"\\\\])*)\"");
-        Matcher coincidencia = patron.matcher(json);
-        return coincidencia.find() ? desescaparJson(coincidencia.group(1)) : null;
-    }
-
-    private String escaparJson(String texto) {
-        return texto.replace("\\", "\\\\")
-                .replace("\"", "\\\"")
-                .replace("\n", "\\n")
-                .replace("\r", "\\r")
-                .replace("\t", "\\t");
-    }
-
-    private String desescaparJson(String texto) {
-        StringBuilder resultado = new StringBuilder();
-        for (int i = 0; i < texto.length(); i++) {
-            char caracter = texto.charAt(i);
-            if (caracter == '\\' && i + 1 < texto.length()) {
-                char escapado = texto.charAt(++i);
-                switch (escapado) {
-                    case 'n': resultado.append('\n'); break;
-                    case 'r': resultado.append('\r'); break;
-                    case 't': resultado.append('\t'); break;
-                    default: resultado.append(escapado); break;
-                }
-            } else {
-                resultado.append(caracter);
-            }
-        }
-        return resultado.toString();
-    }
-
-    private void enviarMensajeAlServidor(String mensaje) throws IOException {
-        PrintWriter salida = salidaChat;
-        Socket socket = socketChat;
-        if (salida == null || socket == null || socket.isClosed()) {
-            throw new IOException("No hay conexión con el administrador.");
-        }
-        salida.println(mensaje);
-        if (salida.checkError()) {
-            throw new IOException("No se pudo enviar el mensaje al administrador.");
-        }
-    }
-
-    private void desconectarServidorChat() {
-        clienteChatCerrado = true;
-        chatConectando = false;
-        Socket socket = socketChat;
-        socketChat = null;
-        salidaChat = null;
-        if (socket != null) {
-            try {
-                socket.close();
-            } catch (IOException ex) {
-                estadoChat.setText("No se pudo cerrar la conexión: " + ex.getMessage());
-            }
-        }
-    }
-
-    private void cerrarClienteChat() {
-        desconectarServidorChat();
+        }.execute();
     }
 
     // arma la grilla de tarjetas del catalogo en el centro de la ventana
@@ -762,8 +567,108 @@ public class VentanaUsuario extends JFrame {
 
         tarjeta.add(crearImagen(producto.getId()), BorderLayout.NORTH);
         tarjeta.add(datos, BorderLayout.CENTER);
-        tarjeta.add(btnAgregar, BorderLayout.SOUTH);
+        JButton btnConsultar = new JButton("Consultar sobre este producto");
+        estilizarBoton(btnConsultar, AZUL_MARINO, MARFIL);
+        btnConsultar.addActionListener(e -> consultarProducto(producto));
+
+        JPanel acciones = new JPanel(new GridLayout(2, 1, 0, 6));
+        acciones.setOpaque(false);
+        acciones.add(btnAgregar);
+        acciones.add(btnConsultar);
+
+        tarjeta.add(acciones, BorderLayout.SOUTH);
         return tarjeta;
+    }
+
+    private void consultarProducto(Producto producto) {
+        JDialog dialogo = new JDialog(this, "Consulta sobre " + producto.getNombre(), false);
+        dialogo.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
+
+        JTextArea conversacion = new JTextArea();
+        conversacion.setEditable(false);
+        conversacion.setLineWrap(true);
+        conversacion.setWrapStyleWord(true);
+        conversacion.setBackground(SUPERFICIE);
+        conversacion.setForeground(TEXTO_CLARO);
+        conversacion.append("Asistente: Hola, puedo responder preguntas sobre este producto."
+                + System.lineSeparator());
+        JScrollPane desplazamiento = new JScrollPane(conversacion);
+        desplazamiento.getViewport().setBackground(SUPERFICIE);
+
+        JTextField campoPregunta = new JTextField();
+        campoPregunta.setBackground(SUPERFICIE);
+        campoPregunta.setForeground(TEXTO_CLARO);
+        campoPregunta.setCaretColor(TEXTO_CLARO);
+        JButton botonEnviar = new JButton("Enviar");
+        estilizarBoton(botonEnviar, NARANJA, MARFIL);
+        StringBuilder historial = new StringBuilder();
+
+        Runnable enviarPregunta = () -> {
+            String pregunta = campoPregunta.getText().trim();
+            if (pregunta.isEmpty() || !botonEnviar.isEnabled()) {
+                return;
+            }
+
+            campoPregunta.setText("");
+            conversacion.append("Tú: " + pregunta + System.lineSeparator());
+            botonEnviar.setEnabled(false);
+            campoPregunta.setEnabled(false);
+
+            String contexto = "Producto: " + producto.getNombre()
+                    + "\nCategoría: " + producto.getCategoria()
+                    + "\nPrecio: $" + producto.getPrecio()
+                    + "\nStock disponible: " + producto.getStock()
+                    + "\n\nConversación anterior:\n" + historial
+                    + "\nPregunta del cliente: " + pregunta;
+
+            new SwingWorker<String, Void>() {
+                @Override
+                protected String doInBackground() throws Exception {
+                    return GeminiAPIClient.responder(contexto);
+                }
+
+                @Override
+                protected void done() {
+                    try {
+                        String respuesta = get();
+                        conversacion.append("Asistente: " + respuesta + System.lineSeparator());
+                        historial.append("Cliente: ").append(pregunta)
+                                .append("\nAsistente: ").append(respuesta).append('\n');
+                    } catch (InterruptedException ex) {
+                        Thread.currentThread().interrupt();
+                        conversacion.append("Error: se interrumpió la consulta."
+                                + System.lineSeparator());
+                    } catch (java.util.concurrent.ExecutionException ex) {
+                        Throwable causa = ex.getCause();
+                        String mensaje = causa == null || causa.getMessage() == null
+                                ? ex.getMessage() : causa.getMessage();
+                        conversacion.append("Error al consultar: " + mensaje + System.lineSeparator());
+                    } finally {
+                        botonEnviar.setEnabled(true);
+                        campoPregunta.setEnabled(true);
+                        campoPregunta.requestFocusInWindow();
+                    }
+                }
+            }.execute();
+        };
+        botonEnviar.addActionListener(e -> enviarPregunta.run());
+        campoPregunta.addActionListener(e -> enviarPregunta.run());
+
+        JPanel envio = new JPanel(new BorderLayout(8, 0));
+        envio.setBackground(FONDO);
+        envio.add(campoPregunta, BorderLayout.CENTER);
+        envio.add(botonEnviar, BorderLayout.EAST);
+
+        JPanel contenido = new JPanel(new BorderLayout(8, 8));
+        contenido.setBackground(FONDO);
+        contenido.setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
+        contenido.add(desplazamiento, BorderLayout.CENTER);
+        contenido.add(envio, BorderLayout.SOUTH);
+        dialogo.setContentPane(contenido);
+        dialogo.setSize(520, 400);
+        dialogo.setLocationRelativeTo(this);
+        dialogo.setVisible(true);
+        campoPregunta.requestFocusInWindow();
     }
 
     // busca la foto en la carpeta imagenes con el id del producto

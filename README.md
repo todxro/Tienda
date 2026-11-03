@@ -10,11 +10,12 @@ Aplicación de escritorio en Java Swing para gestionar un catálogo, registrar c
 ## Índice del proyecto
 
 ### Interfaz
-- `src/tienda/VentanaUsuario.java`: catálogo, cuenta, carrito y chat del cliente.
-- `src/tienda/VentanaAdmin.java`: inventario, historial de ventas y chat de administración.
+- `src/tienda/VentanaUsuario.java`: catálogo, cuenta, carrito y asistente Gemini del cliente.
+- `src/tienda/GeminiAPIClient.java`: consultas de clientes sobre productos mediante Gemini.
+- `src/tienda/VentanaAdmin.java`: inventario e historial de ventas.
 
 Dentro de `VentanaUsuario.java`, el índice al inicio de la clase agrupa los métodos de acceso,
-catálogo, compra, chat e inicio de la aplicación.
+catálogo, compra, consultas de productos e inicio de la aplicación.
 
 ### Lógica y datos
 - `src/tienda/Inventario.java` y `src/tienda/Producto.java`: productos y persistencia del inventario.
@@ -51,6 +52,21 @@ java -jar .\Tienda-Admin.jar
 Ejecuta los comandos desde la carpeta raíz del proyecto para que la aplicación encuentre
 `inventario.csv`, `usuarios.csv`, `ventas.csv` e `imagenes/`. Esos archivos deben mantenerse
 junto a los JAR; los ejecutables no incluyen los datos ni las imágenes.
+
+### Consultas sobre productos
+
+Cada producto del catálogo incluye el botón **Consultar sobre este producto**. Para habilitar
+las respuestas de Gemini, configura la variable de entorno `GEMINI_API_KEY` antes de iniciar
+la aplicación. En PowerShell:
+
+```powershell
+$env:GEMINI_API_KEY = "TU_CLAVE_DE_GEMINI"
+javac -encoding UTF-8 -d bin src\tienda\*.java
+java -cp bin tienda.VentanaUsuario
+```
+
+La clave no debe guardarse en el código ni compartirse. Revoca cualquier clave que ya se haya
+expuesto y genera una nueva.
 
 También puedes compilar manualmente y ejecutar desde `bin`:
 

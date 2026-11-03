@@ -1,4 +1,4 @@
-Jose: 6.7
-Visente: 6.5
-Edu: 6.3
+Jose: 6.8
+Visente: 6.7
+Edu: 6.6
 Matias: 7
