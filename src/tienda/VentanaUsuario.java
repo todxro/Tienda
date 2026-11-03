@@ -13,7 +13,9 @@ import java.io.PrintWriter;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
+import java.text.NumberFormat;
 import java.util.ArrayDeque;
+import java.util.Locale;
 import java.util.Queue;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -27,13 +29,13 @@ import javax.swing.text.DocumentFilter;
 // Presenta el catálogo, la compra, el inicio de sesión y el chat del cliente.
 // Índice por línea:
 // - Acceso y registro: crearPanelLogin (105), mostrarRegistro (166)
-// - Catálogo y búsqueda: mostrarCatalogo (209), crearPanelBusqueda (226), crearPanelCatalogo (704),
-//   crearTarjeta (726), crearImagen (759), ajustarImagen (781), cargarProductosEnGrilla (1019)
-// - Cuenta y compra: mostrarCuenta (338), crearPanelAcciones (800), mostrarCarrito (826),
-//   agregarAlCarrito (1028), comprarProductos (1069), actualizarVista (1139)
-// - Ayuda y chat: crearBotonAyuda (395), mostrarVentanaChat (430), crearPanelChat (444),
+// - Catálogo y búsqueda: mostrarCatalogo (209), crearPanelBusqueda (236), crearPanelCatalogo (714),
+//   crearTarjeta (736), crearImagen (769), ajustarImagen (791), cargarProductosEnGrilla (1031)
+// - Cuenta y compra: mostrarCuenta (348), crearPanelAcciones (810), mostrarCarrito (836),
+//   agregarAlCarrito (1040), comprarProductos (1081), actualizarVista (1151)
+// - Ayuda y chat: crearBotonAyuda (405), mostrarVentanaChat (440), crearPanelChat (454),
 //   conexión y mensajes (491-699)
-// - Interfaz e inicio: estilizarBoton (1010), main (1175)
+// - Interfaz e inicio: estilizarBoton (1022), main (1208)
 public class VentanaUsuario extends JFrame {
     private static final String HOST_CHAT = "172.26.39.8";
     private static final int PUERTO_CHAT = 65432;
@@ -53,11 +55,20 @@ public class VentanaUsuario extends JFrame {
     private final GestorUsuarios gestorUsuarios;
     private final CardLayout tarjetas = new CardLayout();
     private final JPanel paneles = new JPanel(tarjetas);
+    private JFrame ventanaCarrito;
 
     // componentes de la interfaz
     private JPanel grillaCatalogo;
     private JTable tablaCarrito;
     private DefaultTableModel modeloCarrito;
+    private JLabel cantidadProductosCarrito;
+    private JLabel valorSubtotalCarrito;
+    private JLabel valorIVACarrito;
+    private JPanel contenidoCarrito;
+    private CardLayout tarjetasCarrito;
+    private JButton botonComprarCarrito;
+    private JButton botonVaciarCarrito;
+    private JButton botonQuitarUnidadCarrito;
     private JTextField campoCantidad;
     private JLabel labelTotal;
     private JButton botonIniciarSesion;
@@ -824,185 +835,214 @@ public class VentanaUsuario extends JFrame {
      }
     
     private void mostrarCarrito() {
-        JDialog ventana = new JDialog(this, "Mi carrito", true);
-        ventana.setSize(600, 650);
-        ventana.setLocationRelativeTo(this);
-        ventana.setResizable(false);
+        if (ventanaCarrito != null && ventanaCarrito.isDisplayable()) {
+            ventanaCarrito.setVisible(true);
+            ventanaCarrito.toFront();
+            return;
+        }
+        ventanaCarrito = new JFrame("Mi carrito - Tienda");
+        ventanaCarrito.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
+        ventanaCarrito.setContentPane(crearPanelCarrito());
+        ventanaCarrito.setSize(getSize());
+        ventanaCarrito.setMinimumSize(new Dimension(620, 500));
+        ventanaCarrito.setLocationRelativeTo(this);
+        ventanaCarrito.setExtendedState(getExtendedState());
+        ventanaCarrito.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent e) {
+                volverAlCatalogo();
+            }
+        });
+        actualizarVista();
+        setVisible(false);
+        ventanaCarrito.setVisible(true);
+    }
 
-        JPanel panel = new JPanel(new BorderLayout(15, 15));
+    private void volverAlCatalogo() {
+        if (ventanaCarrito != null) {
+            ventanaCarrito.dispose();
+            ventanaCarrito = null;
+        }
+        setVisible(true);
+        toFront();
+    }
+
+    private Component ventanaActiva() {
+        return ventanaCarrito == null ? this : ventanaCarrito;
+    }
+
+    private JPanel crearPanelCarrito() {
+        JPanel panel = new JPanel(new BorderLayout(18, 18));
         panel.setBackground(FONDO);
-        panel.setBorder(BorderFactory.createEmptyBorder(25, 35, 25, 35));
+        panel.setBorder(BorderFactory.createEmptyBorder(22, 24, 22, 24));
 
-        JPanel encabezado = new JPanel(new BorderLayout());
-        encabezado.setBackground(FONDO);
-
-        JLabel titulo = new JLabel("TU CARRITO");
-        titulo.setFont(new Font("Serif", Font.PLAIN, 38));
-        titulo.setForeground(DORADO);
-
-        JLabel cantidadProductos = new JLabel("0 productos");
-        cantidadProductos.setFont(new Font("SansSerif", Font.PLAIN, 24));
-        cantidadProductos.setForeground(TEXTO_CLARO);
-
-        encabezado.add(titulo, BorderLayout.WEST);
-        encabezado.add(cantidadProductos, BorderLayout.EAST);
-
+        JPanel encabezado = new JPanel(new BorderLayout(12, 4));
+        encabezado.setBackground(AZUL_MARINO);
+        encabezado.setBorder(BorderFactory.createEmptyBorder(18, 20, 18, 20));
+        JPanel titulos = new JPanel();
+        titulos.setOpaque(false);
+        titulos.setLayout(new BoxLayout(titulos, BoxLayout.Y_AXIS));
+        JLabel titulo = new JLabel("Tu carrito");
+        titulo.setFont(new Font("SansSerif", Font.BOLD, 26));
+        titulo.setForeground(MARFIL);
+        JLabel subtitulo = new JLabel("Revisa tus productos antes de finalizar la compra.");
+        subtitulo.setFont(new Font("SansSerif", Font.PLAIN, 13));
+        subtitulo.setForeground(new Color(220, 230, 240));
+        titulos.add(titulo);
+        titulos.add(Box.createVerticalStrut(4));
+        titulos.add(subtitulo);
+        cantidadProductosCarrito = new JLabel("0 productos");
+        cantidadProductosCarrito.setFont(new Font("SansSerif", Font.BOLD, 14));
+        cantidadProductosCarrito.setForeground(MARFIL);
+        cantidadProductosCarrito.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(95, 133, 171)),
+                BorderFactory.createEmptyBorder(8, 12, 8, 12)));
+        encabezado.add(titulos, BorderLayout.CENTER);
+        encabezado.add(cantidadProductosCarrito, BorderLayout.EAST);
         panel.add(encabezado, BorderLayout.NORTH);
 
         JPanel centro = new JPanel(new BorderLayout());
-        centro.setBackground(SUPERFICIE);
-        centro.setBorder(BorderFactory.createLineBorder(
-            new Color(38, 34, 57), 2));
-
+        centro.setBackground(MARFIL);
+        centro.setBorder(BorderFactory.createLineBorder(new Color(215, 203, 184)));
         String[] columnas = {"Producto", "Cantidad", "Subtotal"};
-            
-
         modeloCarrito = new DefaultTableModel(columnas, 0) {
             @Override
             public boolean isCellEditable(int fila, int columna) {
                 return false;
             }
         };
-
         tablaCarrito = new JTable(modeloCarrito);
-        tablaCarrito.setRowHeight(30);
-        tablaCarrito.setBackground(SUPERFICIE);
-        tablaCarrito.setForeground(TEXTO_CLARO);
-        tablaCarrito.setGridColor(new Color(45, 40, 65));
-
+        tablaCarrito.setRowHeight(40);
+        tablaCarrito.setBackground(MARFIL);
+        tablaCarrito.setForeground(TEXTO);
+        tablaCarrito.setSelectionBackground(new Color(220, 232, 244));
+        tablaCarrito.setSelectionForeground(TEXTO);
+        tablaCarrito.setGridColor(new Color(229, 220, 205));
+        tablaCarrito.setShowVerticalLines(false);
+        tablaCarrito.setIntercellSpacing(new Dimension(0, 1));
+        tablaCarrito.setFillsViewportHeight(true);
+        tablaCarrito.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         tablaCarrito.getTableHeader().setBackground(AZUL_MARINO);
         tablaCarrito.getTableHeader().setForeground(MARFIL);
-        tablaCarrito.getTableHeader().setFont(
-            new Font("SansSerif", Font.BOLD, 14));
-
+        tablaCarrito.getTableHeader().setFont(new Font("SansSerif", Font.BOLD, 13));
+        tablaCarrito.getTableHeader().setPreferredSize(new Dimension(0, 38));
+        tablaCarrito.getColumnModel().getColumn(0).setPreferredWidth(380);
+        tablaCarrito.getColumnModel().getColumn(1).setPreferredWidth(100);
+        tablaCarrito.getColumnModel().getColumn(2).setPreferredWidth(150);
         JScrollPane scroll = new JScrollPane(tablaCarrito);
         scroll.setBorder(BorderFactory.createEmptyBorder());
+        scroll.getViewport().setBackground(MARFIL);
 
-        centro.add(scroll, BorderLayout.CENTER);
-
+        tarjetasCarrito = new CardLayout();
+        contenidoCarrito = new JPanel(tarjetasCarrito);
+        contenidoCarrito.setBackground(MARFIL);
+        JPanel vacio = new JPanel();
+        vacio.setBackground(MARFIL);
+        vacio.setLayout(new BoxLayout(vacio, BoxLayout.Y_AXIS));
+        JLabel iconoVacio = new JLabel("♡", SwingConstants.CENTER);
+        iconoVacio.setFont(new Font("SansSerif", Font.PLAIN, 52));
+        iconoVacio.setForeground(AZUL);
+        iconoVacio.setAlignmentX(Component.CENTER_ALIGNMENT);
+        JLabel mensajeVacio = new JLabel("Tu carrito está vacío", SwingConstants.CENTER);
+        mensajeVacio.setFont(new Font("SansSerif", Font.BOLD, 20));
+        mensajeVacio.setForeground(TEXTO);
+        mensajeVacio.setAlignmentX(Component.CENTER_ALIGNMENT);
+        JLabel ayudaVacio = new JLabel("Explora el catálogo y agrega tus productos favoritos.",
+                SwingConstants.CENTER);
+        ayudaVacio.setFont(new Font("SansSerif", Font.PLAIN, 14));
+        ayudaVacio.setForeground(TEXTO_CLARO);
+        ayudaVacio.setAlignmentX(Component.CENTER_ALIGNMENT);
+        vacio.add(Box.createVerticalGlue());
+        vacio.add(iconoVacio);
+        vacio.add(Box.createVerticalStrut(8));
+        vacio.add(mensajeVacio);
+        vacio.add(Box.createVerticalStrut(6));
+        vacio.add(ayudaVacio);
+        vacio.add(Box.createVerticalGlue());
+        contenidoCarrito.add(scroll, "productos");
+        contenidoCarrito.add(vacio, "vacio");
+        centro.add(contenidoCarrito, BorderLayout.CENTER);
         panel.add(centro, BorderLayout.CENTER);
 
-        JPanel inferior = new JPanel(new BorderLayout(10, 10));
+        JPanel inferior = new JPanel(new BorderLayout(12, 14));
         inferior.setBackground(FONDO);
-
-        // Resumen
-        JPanel resumen = new JPanel(new GridLayout(3, 2, 10, 5));
-        resumen.setBackground(FONDO);
-
-        JLabel labelSubtotal = new JLabel("Subtotal:");
-        JLabel valorSubtotal = new JLabel("$0");
-
-        JLabel labelIVA = new JLabel("IVA (19%):");
-        JLabel valorIVA = new JLabel("$0");
-
-        JLabel labelTotalTexto = new JLabel("TOTAL:");
-        JLabel valorTotal = new JLabel("$0");
-
-        labelSubtotal.setForeground(TEXTO_CLARO);
-        valorSubtotal.setForeground(TEXTO_CLARO);
-
-        labelIVA.setForeground(TEXTO_CLARO);
-        valorIVA.setForeground(TEXTO_CLARO);
-
-        labelTotalTexto.setForeground(TEXTO_CLARO);
-        valorTotal.setForeground(TEXTO_CLARO);
-
-        labelSubtotal.setFont(new Font("SansSerif", Font.PLAIN, 20));
-        valorSubtotal.setFont(new Font("SansSerif", Font.PLAIN, 20));
-
-        labelIVA.setFont(new Font("SansSerif", Font.PLAIN, 20));
-        valorIVA.setFont(new Font("SansSerif", Font.PLAIN, 20));
-
-        labelTotalTexto.setFont(new Font("Serif", Font.PLAIN, 27));
-        valorTotal.setFont(new Font("Serif", Font.PLAIN, 27));
-
-        resumen.add(labelSubtotal);
-        resumen.add(valorSubtotal);
-
-        resumen.add(labelIVA);
-        resumen.add(valorIVA);
-
-        resumen.add(labelTotalTexto);
-        resumen.add(valorTotal);
-
-        inferior.add(resumen, BorderLayout.CENTER);
-        // Botones
-        JPanel pie = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
-        pie.setBackground(FONDO);
-
-        JButton btnComprar = new JButton("Comprar");
-        estilizarBoton(btnComprar, NARANJA, MARFIL);
-        btnComprar.addActionListener(e -> {
-            ventana.dispose();
-            comprarProductos();
-        });
-        pie.add(btnComprar);
-
-        JButton btnVaciar = new JButton("Vaciar carrito");
-        estilizarBoton(btnVaciar, NARANJA, MARFIL);
-        btnVaciar.addActionListener(e -> {
-            if (carrito.getProductos().isEmpty()) {
-                JOptionPane.showMessageDialog(this,
-                    "El carrito ya está vacío.",
-                    "Carrito",
-                    JOptionPane.WARNING_MESSAGE);
-            return;
+        JPanel resumen = new JPanel(new GridLayout(3, 2, 12, 7));
+        resumen.setBackground(MARFIL);
+        resumen.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(215, 203, 184)),
+                BorderFactory.createEmptyBorder(12, 16, 12, 16)));
+        JLabel labelSubtotal = new JLabel("Subtotal");
+        JLabel labelIVA = new JLabel("IVA (19%)");
+        JLabel labelTotalTexto = new JLabel("Total");
+        valorSubtotalCarrito = new JLabel("$0", SwingConstants.RIGHT);
+        valorIVACarrito = new JLabel("$0", SwingConstants.RIGHT);
+        labelTotal = new JLabel("$0", SwingConstants.RIGHT);
+        for (JLabel etiqueta : new JLabel[] {labelSubtotal, labelIVA}) {
+            etiqueta.setForeground(TEXTO_CLARO);
+            etiqueta.setFont(new Font("SansSerif", Font.PLAIN, 14));
         }
+        for (JLabel valor : new JLabel[] {valorSubtotalCarrito, valorIVACarrito}) {
+            valor.setForeground(TEXTO);
+            valor.setFont(new Font("SansSerif", Font.PLAIN, 14));
+        }
+        labelTotalTexto.setForeground(TEXTO);
+        labelTotalTexto.setFont(new Font("SansSerif", Font.BOLD, 17));
+        labelTotal.setForeground(AZUL_MARINO);
+        labelTotal.setFont(new Font("SansSerif", Font.BOLD, 20));
+        resumen.add(labelSubtotal);
+        resumen.add(valorSubtotalCarrito);
+        resumen.add(labelIVA);
+        resumen.add(valorIVACarrito);
+        resumen.add(labelTotalTexto);
+        resumen.add(labelTotal);
+        inferior.add(resumen, BorderLayout.CENTER);
 
+        JPanel pie = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        pie.setBackground(FONDO);
+        JButton btnCerrar = new JButton("← Volver al catálogo");
+        estilizarBoton(btnCerrar, AZUL_MARINO, MARFIL);
+        btnCerrar.addActionListener(e -> volverAlCatalogo());
+        pie.add(btnCerrar);
+        botonVaciarCarrito = new JButton("Vaciar carrito");
+        estilizarBoton(botonVaciarCarrito, SUPERFICIE, TEXTO);
+        botonVaciarCarrito.addActionListener(e -> {
+            if (carrito.getProductos().isEmpty()) {
+                JOptionPane.showMessageDialog(ventanaActiva(), "El carrito ya está vacío.",
+                        "Carrito", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
             carrito.vaciarCarrito();
             actualizarVista();
         });
-        pie.add(btnVaciar);
-
-        JButton btnCerrar = new JButton("Cerrar");
-        estilizarBoton(btnCerrar, AZUL_MARINO, MARFIL);
-        btnCerrar.addActionListener(e -> ventana.dispose());
-        pie.add(btnCerrar);
-
-        inferior.add(pie, BorderLayout.SOUTH);
-
-        panel.add(inferior, BorderLayout.SOUTH);
-
-        ventana.add(panel);
-        JButton btnEliminar = new JButton("Eliminar producto");
-        estilizarBoton(btnEliminar, NARANJA, MARFIL);
-        btnEliminar.addActionListener(e -> {
+        pie.add(botonVaciarCarrito);
+        botonQuitarUnidadCarrito = new JButton("Quitar unidad");
+        estilizarBoton(botonQuitarUnidadCarrito, SUPERFICIE, TEXTO);
+        botonQuitarUnidadCarrito.setToolTipText("Quita una unidad del producto seleccionado.");
+        botonQuitarUnidadCarrito.addActionListener(e -> {
             int filaSeleccionada = tablaCarrito.getSelectedRow();
-            if (filaSeleccionada >= 0) {
-                carrito.quitarUnidad(filaSeleccionada);
-                inventario.guardarEnArchivo(); // persiste la reserva
-                ventana.dispose();
-                mostrarCarrito();
+            if (filaSeleccionada < 0) {
+                JOptionPane.showMessageDialog(ventanaActiva(), "Selecciona un producto para quitar una unidad.",
+                        "Carrito", JOptionPane.INFORMATION_MESSAGE);
+                return;
             }
+            carrito.quitarUnidad(tablaCarrito.convertRowIndexToModel(filaSeleccionada));
+            inventario.guardarEnArchivo();
+            actualizarVista();
         });
-        pie.add(btnEliminar);
-        // Actualiza la información del carrito
-        actualizarVista();
+        pie.add(botonQuitarUnidadCarrito);
+        botonComprarCarrito = new JButton("Comprar");
+        estilizarBoton(botonComprarCarrito, NARANJA, MARFIL);
+        botonComprarCarrito.addActionListener(e -> comprarProductos());
+        botonComprarCarrito.setFont(new Font("SansSerif", Font.BOLD, 14));
+        pie.add(botonComprarCarrito);
+        inferior.add(pie, BorderLayout.SOUTH);
+        panel.add(inferior, BorderLayout.SOUTH);
+        return panel;
+    }
 
-        // Cantidad de productos
-        int cantidad = 0;
-
-        for (Producto p : carrito.getProductos()) {
-            cantidad += carrito.getCantidad(p.getId());
-        }
-
-        cantidadProductos.setText(cantidad + " productos");
-
-        // Actualiza los valores
-        double subtotal = 0;
-
-        for (Producto p : carrito.getProductos()) {
-            subtotal += carrito.calcularSubtotal(p.getId());
-        }
-
-        double iva = subtotal * 0.19;
-        double total = subtotal + iva;
-
-        valorSubtotal.setText("$" + subtotal);
-        valorIVA.setText("$" + iva);
-        valorTotal.setText("$" + total);
-
-        ventana.setVisible(true);
+    private String formatearPrecio(double monto) {
+        return "$" + NumberFormat.getIntegerInstance(new Locale("es", "CL"))
+                .format(Math.round(monto));
     }
 
 
@@ -1069,7 +1109,7 @@ public class VentanaUsuario extends JFrame {
     private void comprarProductos() {
         // Calcula los importes, registra la venta y persiste el stock actualizado.
         if (carrito.getProductos().isEmpty()) {
-            JOptionPane.showMessageDialog(this, "El carrito está vacío.", "Compra",
+            JOptionPane.showMessageDialog(ventanaActiva(), "El carrito está vacío.", "Compra",
                     JOptionPane.WARNING_MESSAGE);
             return;
         }
@@ -1110,7 +1150,8 @@ public class VentanaUsuario extends JFrame {
         boolean compraExitosa = carrito.finalizarCompra();
 
         if (!compraExitosa) {
-            JOptionPane.showMessageDialog(this, "No hay stock suficiente para completar la compra.", "Compra fallida",
+            JOptionPane.showMessageDialog(ventanaActiva(), "No hay stock suficiente para completar la compra.",
+                    "Compra fallida",
                     JOptionPane.ERROR_MESSAGE);
             return;
         }
@@ -1123,13 +1164,13 @@ public class VentanaUsuario extends JFrame {
                 gestorVentas.guardarVenta(nuevaVenta);
             }
         } catch (IOException e) {
-            JOptionPane.showMessageDialog(this, "No se pudo guardar la venta: " + e.getMessage(),
+            JOptionPane.showMessageDialog(ventanaActiva(), "No se pudo guardar la venta: " + e.getMessage(),
                     "Error al guardar la venta", JOptionPane.ERROR_MESSAGE);
             return;
         }
         inventario.guardarEnArchivo();
         
-        JOptionPane.showMessageDialog(this, "Tu ticket de venta es el número: " + numeroTicket,
+        JOptionPane.showMessageDialog(ventanaActiva(), "Tu ticket de venta es el número: " + numeroTicket,
                 "Ticket de venta",
             JOptionPane.INFORMATION_MESSAGE);
         actualizarVista();
@@ -1152,6 +1193,19 @@ public class VentanaUsuario extends JFrame {
         if (botonCarrito != null) {
             botonCarrito.setText("Carrito (" + cantidadTotal + ")");
         }
+        if (cantidadProductosCarrito != null) {
+            cantidadProductosCarrito.setText(cantidadTotal + (cantidadTotal == 1 ? " producto" : " productos"));
+        }
+        boolean carritoTieneProductos = !carrito.getProductos().isEmpty();
+        if (botonComprarCarrito != null) {
+            botonComprarCarrito.setEnabled(carritoTieneProductos);
+        }
+        if (botonVaciarCarrito != null) {
+            botonVaciarCarrito.setEnabled(carritoTieneProductos);
+        }
+        if (botonQuitarUnidadCarrito != null) {
+            botonQuitarUnidadCarrito.setEnabled(carritoTieneProductos);
+        }
 
         // Actualiza la tabla solo si fue creada al abrir el carrito
         if (modeloCarrito != null) {
@@ -1161,13 +1215,21 @@ public class VentanaUsuario extends JFrame {
                 modeloCarrito.addRow(new Object[]{
                     p.getNombre(),
                     carrito.getCantidad(p.getId()),
-                    "$" + carrito.calcularSubtotal(p.getId())
+                    formatearPrecio(carrito.calcularSubtotal(p.getId()))
                 });
             }
         }
 
+        if (valorSubtotalCarrito != null && valorIVACarrito != null) {
+            valorSubtotalCarrito.setText(formatearPrecio(carrito.calcularSubtotalCarrito()));
+            valorIVACarrito.setText(formatearPrecio(carrito.calcularIVA()));
+        }
         if (labelTotal != null) {
-            labelTotal.setText("TOTAL: $" + carrito.calcularTotal());
+            labelTotal.setText(formatearPrecio(carrito.calcularTotal()));
+        }
+        if (contenidoCarrito != null && tarjetasCarrito != null) {
+            tarjetasCarrito.show(contenidoCarrito,
+                    carrito.getProductos().isEmpty() ? "vacio" : "productos");
         }
     }
 
