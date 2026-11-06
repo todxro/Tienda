@@ -6,15 +6,17 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
+import java.net.SocketTimeoutException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public final class GeminiAPIClient {
-    private static final int MAX_INTENTOS = 3;
-    private static final long[] ESPERAS_REINTENTO_MS = {1000, 2000};
-    private static final String API_KEY = System.getenv("GEMINI_API_KEY");
+    private static final int MAX_INTENTOS = 4;
+    private static final long[] ESPERAS_REINTENTO_MS = {2000, 5000, 10000};
     private static final String API_URL =
             "https://generativelanguage.googleapis.com/v1/models/gemini-3.8-flash:generateContent";
     private static final Pattern TEXTO_RESPUESTA =
@@ -28,15 +30,14 @@ public final class GeminiAPIClient {
     }
 
     public static String callGeminiAPI(String prompt) throws IOException {
-        if (API_KEY == null || API_KEY.isBlank()) {
-            throw new IOException("Define la variable de entorno GEMINI_API_KEY con tu clave de Gemini.");
-        }
+        String apiKey = obtenerApiKey();
 
         String urlAutenticada = API_URL + "?key="
-                + java.net.URLEncoder.encode(API_KEY.trim(), StandardCharsets.UTF_8);
+                + java.net.URLEncoder.encode(apiKey, StandardCharsets.UTF_8);
         String requestBody = "{\"contents\":[{\"parts\":[{\"text\":\""
                 + escapeJson(prompt) + "\"}]}]}";
 
+        boolean reintentoPorTimeoutUsado = false;
         for (int intento = 1; intento <= MAX_INTENTOS; intento++) {
             HttpURLConnection connection =
                     (HttpURLConnection) new URL(urlAutenticada).openConnection();
@@ -73,6 +74,14 @@ public final class GeminiAPIClient {
                 } else {
                     return extractTextFromResponse(response);
                 }
+            } catch (SocketTimeoutException ex) {
+                if (!reintentoPorTimeoutUsado && intento < MAX_INTENTOS) {
+                    reintentoPorTimeoutUsado = true;
+                    reintentar = true;
+                } else {
+                    throw new IOException("Gemini tardó demasiado en responder. "
+                            + "Revisa tu conexión e inténtalo nuevamente.", ex);
+                }
             } finally {
                 connection.disconnect();
             }
@@ -82,6 +91,24 @@ public final class GeminiAPIClient {
             }
         }
         throw new IOException("No se pudo completar la consulta a Gemini.");
+    }
+
+    private static String obtenerApiKey() throws IOException {
+        String apiKey = System.getenv("GEMINI_API_KEY");
+        if (apiKey != null && !apiKey.isBlank()) {
+            return apiKey.trim();
+        }
+
+        Path archivoClave = Path.of("gemini-api-key.txt");
+        if (Files.isRegularFile(archivoClave)) {
+            apiKey = Files.readString(archivoClave, StandardCharsets.UTF_8).trim();
+            if (!apiKey.isBlank()) {
+                return apiKey;
+            }
+        }
+
+        throw new IOException("Pega tu clave de Gemini en gemini-api-key.txt (carpeta raíz del proyecto) "
+                + "o define la variable de entorno GEMINI_API_KEY.");
     }
 
     private static boolean esErrorTemporal(int responseCode) {

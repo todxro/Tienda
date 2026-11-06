@@ -56,8 +56,9 @@ junto a los JAR; los ejecutables no incluyen los datos ni las imágenes.
 ### Consultas sobre productos
 
 Cada producto del catálogo incluye el botón **Consultar sobre este producto**. Para habilitar
-las respuestas de Gemini, configura la variable de entorno `GEMINI_API_KEY` antes de iniciar
-la aplicación. En PowerShell:
+las respuestas de Gemini, pega tu clave en `gemini-api-key.txt`, en la carpeta raíz del proyecto.
+El archivo está ignorado por Git, así que la clave no se agrega al repositorio. También puedes
+configurar la variable de entorno `GEMINI_API_KEY` en PowerShell:
 
 ```powershell
 $env:GEMINI_API_KEY = "TU_CLAVE_DE_GEMINI"
@@ -65,8 +66,8 @@ javac -encoding UTF-8 -d bin src\tienda\*.java
 java -cp bin tienda.VentanaUsuario
 ```
 
-La clave no debe guardarse en el código ni compartirse. Revoca cualquier clave que ya se haya
-expuesto y genera una nueva.
+La variable de entorno tiene prioridad sobre el archivo local. Ejecuta los comandos desde la
+carpeta raíz del proyecto. Revoca y reemplaza cualquier clave que ya se haya expuesto.
 
 También puedes compilar manualmente y ejecutar desde `bin`:
 
