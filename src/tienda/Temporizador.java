@@ -1,58 +1,65 @@
 package tienda;
 
-import java.util.Timer;
-import java.util.TimerTask;
+import javax.swing.Timer;
 
+// Cuenta regresiva 
 public class Temporizador {
-    private static final int DURACION_SEGUNDOS = 300;  // 5 minutos (placehodler)
-    private static final int AVISO_SEGUNDOS = 60;      // avisar cuando quede 1 minuto (palceholder)
+    private static final int DURACION_SEGUNDOS = 300; // 5 minutos (placeholder)
+    private static final int AVISO_SEGUNDOS = 60;     // avisa cuando queda 1 minuto (placeholder)
 
-    private Timer timer;
-    private int tiempoRestante;
     private final Carrito carrito;
+    private final Timer timer;
+    private int tiempoRestante;
 
     public Temporizador(Carrito carrito) {
         this.carrito = carrito;
+        this.timer = new Timer(1000, e -> avanzar());
     }
 
     public void iniciarSiNoCorre() {
-        if (timer == null) {
+        if (!timer.isRunning()) {
             iniciarTemporizador();
         }
     }
 
-    // Reinicia el conteo desde cero (reutilizable para cada accion del usuario en el carrito :b)
+    // reinicia el conteo desde cero
     public void iniciarTemporizador() {
-        detener();
         tiempoRestante = DURACION_SEGUNDOS;
-        timer = new Timer(true);
+        timer.restart();
+    }
 
-        timer.scheduleAtFixedRate(new TimerTask() {
-            @Override
-            public void run() {
-                tiempoRestante--;
-
-                if (tiempoRestante == AVISO_SEGUNDOS) {
-                    System.out.println("Su carrito se borrara en 1 minuto"); //PLACEHOLDER           
-                    // //cambiar por un jframe supongo, asi no es tan penca
-                    }
-
-                if (tiempoRestante <= 0) {
-                    detener();
-                    carrito.vaciarCarrito();
-                }
-            }
-        }, 1000, 1000);
+    // si el carrito ta vacio, no avanza el tiempo, si no, reinicia el conteo
+    public void reiniciarSegunCarrito() {
+        if (carrito.getProductos().isEmpty()) {
+            detener();
+        } else {
+            iniciarTemporizador();
+        }
     }
 
     public void detener() {
-        if (timer != null) {
-            timer.cancel();
-            timer = null;
-        }
+        timer.stop();
     }
 
     public int getTiempoRestante() {
         return tiempoRestante;
+    }
+
+    // Cambiar por un JOptionPane o un JLabel despoe, ta feo asi q PLACEHOLDER
+    private void avisarUsuario() {
+        System.out.println("Tu carrito se vaciará en " + tiempoRestante + " segundos");
+    }
+
+    private void avanzar() {
+        tiempoRestante--;
+
+        if (tiempoRestante <= AVISO_SEGUNDOS && tiempoRestante > 0) {
+            avisarUsuario();
+        }
+
+        if (tiempoRestante <= 0) {
+            detener();
+            carrito.vaciarCarrito();//la magia
+        }
     }
 }
