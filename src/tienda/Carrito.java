@@ -9,6 +9,8 @@ public class Carrito {
 private ArrayList<Producto> productos;
 // cantidad de cada producto
 private ArrayList<Integer> cantidades;
+// cupon aplicado al carrito, null si no hay
+private Cupon cupon;
 
 public Carrito() {
     // inicia las listas del carrito
@@ -123,16 +125,54 @@ public double calcularSubtotalCarrito() {
     return subtotal;
 }
 
-// calcula el monto de IVA sobre el subtotal del carrito
+// aplica un cupon al carrito, devuelve null si se pudo o el motivo si no
+public String aplicarCupon(Cupon nuevo) {
+    if (nuevo == null) {
+        return "El cupón no existe.";
+    }
+    if (productos.isEmpty()) {
+        return "Agrega productos al carrito antes de usar un cupón.";
+    }
+    String motivo = nuevo.validar();
+    if (motivo != null) {
+        return motivo;
+    }
+    cupon = nuevo;
+    return null;
+}
+
+// quita el cupon del carrito
+public void quitarCupon() {
+    cupon = null;
+}
+
+// entrega el cupon aplicado, o null si no hay
+public Cupon getCupon() {
+    return cupon;
+}
+
+// monto que se descuenta del subtotal, 0 si no hay cupon
+public double calcularDescuento() {
+    if (cupon == null) {
+        return 0;
+    }
+    return cupon.calcularDescuento(calcularSubtotalCarrito());
+}
+
+// subtotal despues de restar el descuento, base para el IVA
+public double calcularSubtotalNeto() {
+    return calcularSubtotalCarrito() - calcularDescuento();
+}
+
+// calcula el monto de IVA sobre el subtotal neto
 public double calcularIVA() {
-    return calcularSubtotalCarrito() * TASA_IVA;
+    return calcularSubtotalNeto() * TASA_IVA;
 }
 
-// calcula el precio total del carrito (subtotal + IVA)
+// calcula el precio total del carrito (subtotal neto + IVA)
 public double calcularTotal() {
-    return calcularSubtotalCarrito() + calcularIVA();
+    return calcularSubtotalNeto() + calcularIVA();
 }
-
 
 // finaliza la compra y descuenta el stock
 public boolean finalizarCompra() {
@@ -140,6 +180,7 @@ public boolean finalizarCompra() {
     // El stock ya se reservó al agregar; al finalizar solo se vacían las listas.
     productos.clear();
     cantidades.clear();
+    cupon = null;
 
     return true;
 }
@@ -157,5 +198,6 @@ public void vaciarCarrito() {
 
     productos.clear();
     cantidades.clear();
+    cupon = null;
  }
 }
