@@ -116,7 +116,11 @@ public double calcularSubtotalCarrito() {
 
 // calcula el monto de IVA sobre el subtotal del carrito
 public double calcularIVA() {
-    return calcularSubtotalCarrito() * TASA_IVA;
+    return calcularIVA(calcularSubtotalCarrito());
+}
+
+public double calcularIVA(double subtotal) {
+    return subtotal * TASA_IVA;
 }
 
 // calcula el precio total del carrito (subtotal + IVA)
