@@ -9,6 +9,7 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
+// lee y guarda los cupones en cupones.csv
 public class GestorCupones {
     private static final String RUTA_ARCHIVO = "cupones.csv";
     private static final String ENCABEZADO = "codigo,tipo,valor,fechaVencimiento,usosMaximos,usosRealizados";
@@ -19,6 +20,7 @@ public class GestorCupones {
         cargar();
     }
 
+    // lee el archivo y llena la lista, salta las lineas con formato malo
     private void cargar() throws IOException {
         cupones.clear();
         Path ruta = Paths.get(RUTA_ARCHIVO);
@@ -35,34 +37,37 @@ public class GestorCupones {
                 cupones.add(new Cupon(d[0].trim(), d[1].trim(), Double.parseDouble(d[2]),
                         LocalDate.parse(d[3].trim()), Integer.parseInt(d[4].trim()),
                         Integer.parseInt(d[5].trim())));
-            } catch (RuntimeException ex) {
+            } catch (RuntimeException e) {
                 System.err.println("Se ignoró la línea inválida " + (i + 1) + " de cupones.csv: "
-                        + ex.getMessage());
+                        + e.getMessage());
             }
         }
     }
 
+    // reescribe el archivo completo con los cupones de la lista
     private void guardar() throws IOException {
         List<String> lineas = new ArrayList<>();
         lineas.add(ENCABEZADO);
-        for (Cupon cupon : cupones) {
-            lineas.add(cupon.toCSV());
+        for (Cupon c : cupones) {
+            lineas.add(c.toCSV());
         }
         Files.write(Paths.get(RUTA_ARCHIVO), lineas, StandardCharsets.UTF_8);
     }
 
+    // devuelve el cupon con ese codigo o null si no existe
     public Cupon buscar(String codigo) {
         if (codigo == null) {
             return null;
         }
-        for (Cupon cupon : cupones) {
-            if (cupon.getCodigo().equalsIgnoreCase(codigo.trim())) {
-                return cupon;
+        for (Cupon c : cupones) {
+            if (c.getCodigo().equalsIgnoreCase(codigo.trim())) {
+                return c;
             }
         }
         return null;
     }
 
+    // agrega un cupon nuevo, devuelve false si el codigo ya existe
     public boolean agregar(Cupon cupon) throws IOException {
         if (buscar(cupon.getCodigo()) != null) {
             return false;
@@ -72,6 +77,7 @@ public class GestorCupones {
         return true;
     }
 
+    // suma un uso al cupon y lo deja guardado en el archivo
     public void registrarUso(String codigo) throws IOException {
         Cupon cupon = buscar(codigo);
         if (cupon != null) {

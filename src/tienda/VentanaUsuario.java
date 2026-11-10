@@ -5,20 +5,9 @@ import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
-import java.io.PrintWriter;
-import java.net.InetSocketAddress;
-import java.net.Socket;
-import java.nio.charset.StandardCharsets;
 import java.text.NumberFormat;
-import java.util.ArrayDeque;
 import java.util.Locale;
-import java.util.Queue;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.text.AbstractDocument;
@@ -26,10 +15,11 @@ import javax.swing.text.AttributeSet;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.DocumentFilter;
 
-// Presenta el catálogo, la compra, el inicio de sesión y el chat del cliente.
+// Presenta el catálogo, la compra, el inicio de sesión y las consultas de productos con Gemini.
+// Métodos principales: crearPanelLogin, mostrarRegistro, mostrarCatalogo, crearPanelBusqueda,
+// crearPanelCatalogo, crearTarjeta, consultarProducto, mostrarVentanaChat, mostrarCuenta,
+// mostrarCarrito, agregarAlCarrito, comprarProductos y actualizarVista.
 public class VentanaUsuario extends JFrame {
-    private static final String HOST_CHAT = "172.26.39.8";
-    private static final int PUERTO_CHAT = 65432;
     private static final Color AZUL        = new Color(34, 96, 176);
     private static final Color AZUL_MARINO = new Color(18, 67, 121);
     private static final Color NARANJA     = new Color(244, 132, 54);
@@ -46,27 +36,33 @@ public class VentanaUsuario extends JFrame {
     private final GestorUsuarios gestorUsuarios;
     private final CardLayout tarjetas = new CardLayout();
     private final JPanel paneles = new JPanel(tarjetas);
+    private JFrame ventanaCarrito;
 
     // componentes de la interfaz
     private JPanel grillaCatalogo;
     private JTable tablaCarrito;
     private DefaultTableModel modeloCarrito;
+    private JLabel cantidadProductosCarrito;
+    private JLabel valorSubtotalCarrito;
+    private JLabel valorDescuentoCarrito;
+    private JLabel valorIVACarrito;
+    private JPanel contenidoCarrito;
+    private CardLayout tarjetasCarrito;
+    private JButton botonComprarCarrito;
+    private JButton botonVaciarCarrito;
+    private JButton botonQuitarUnidadCarrito;
     private JTextField campoCantidad;
-    private JLabel labelTotal;
-    private JLabel labelResumenCompra;
     private JTextField campoCupon;
     private Cupon cuponAplicado;
+    private JLabel labelTotal;
     private JButton botonIniciarSesion;
+    private JButton botonCarrito;
     private final JTextArea areaChat = new JTextArea();
-    private final JLabel estadoChat = new JLabel("Desconectado");
+    private final JLabel estadoChat = new JLabel("Asistente de productos");
     private final JTextField campoMensajeChat = new JTextField();
     private final JButton botonEnviarChat = new JButton("Enviar");
-    private final Queue<String> mensajesPendientesChat = new ArrayDeque<>();
+    private final StringBuilder historialChatGemini = new StringBuilder();
     private JDialog ventanaChat;
-    private volatile Socket socketChat;
-    private volatile PrintWriter salidaChat;
-    private volatile boolean clienteChatCerrado;
-    private volatile boolean chatConectando;
 
     public VentanaUsuario() {
         this(null);
@@ -85,13 +81,7 @@ public class VentanaUsuario extends JFrame {
         // Las tarjetas permiten cambiar de sección dentro de la misma ventana.
         paneles.add(crearPanelLogin(), "login");
         mostrarCatalogo();
-        crearBotonAyuda();    
-        addWindowListener(new WindowAdapter() {
-            @Override
-            public void windowClosing(WindowEvent e) {
-                cerrarClienteChat();
-            }
-        });
+        crearBotonAyuda();
         setLocationRelativeTo(null);
         setExtendedState(JFrame.MAXIMIZED_BOTH);
     }
@@ -207,7 +197,7 @@ public class VentanaUsuario extends JFrame {
         catalogo.setBackground(FONDO);
         catalogo.add(crearPanelBusqueda(), BorderLayout.NORTH);
         catalogo.add(crearPanelCatalogo(), BorderLayout.CENTER);
-        catalogo.add(crearPanelCarrito(), BorderLayout.SOUTH);
+        catalogo.add(crearPanelAcciones(), BorderLayout.SOUTH);
         paneles.add(catalogo, "catalogo");
         tarjetas.show(paneles, "catalogo");
         getRootPane().setDefaultButton(null);
@@ -261,15 +251,15 @@ public class VentanaUsuario extends JFrame {
     try {
         // si el campo está vacio asume 0, de lo contrario lee el valor
         double min = campoMin.getText().trim().isEmpty() ? 0 : Double.parseDouble(campoMin.getText().trim());
-        
+
         // si el campo esta vacío asume el valor maximo posible, de lo contrario lee el valor
         double max = campoMax.getText().trim().isEmpty() ? Double.MAX_VALUE : Double.parseDouble(campoMax.getText().trim());
-        
-        cargarProductosEnGrilla(inventario.filtrarPorRangoPrecio(min, max));  
+
+        cargarProductosEnGrilla(inventario.filtrarPorRangoPrecio(min, max));
     } catch (NumberFormatException ex) {
-        JOptionPane.showMessageDialog(this, 
-            "Por favor, ingresa montos numéricos válidos.", 
-            "Formato incorrecto", 
+        JOptionPane.showMessageDialog(this,
+            "Por favor, ingresa montos numéricos válidos.",
+            "Formato incorrecto",
             JOptionPane.WARNING_MESSAGE);
     }
 });
@@ -384,8 +374,8 @@ public class VentanaUsuario extends JFrame {
         ventana.setResizable(false);
     ventana.setVisible(true);
     }
-    
-    // boton redondo de ayuda abajo a la derecha, abre el chat en vivo con el admin
+
+    // Botón de acceso rápido al asistente de productos con Gemini.
     private void crearBotonAyuda() {
         JButton botonAyuda = new JButton("?") {
             @Override
@@ -405,7 +395,7 @@ public class VentanaUsuario extends JFrame {
         botonAyuda.setFocusPainted(false);
         botonAyuda.setForeground(TEXTO);
         botonAyuda.setFont(new Font("SansSerif", Font.BOLD, 24));
-        botonAyuda.setToolTipText("¿Necesitas ayuda? Habla con un administrador");
+        botonAyuda.setToolTipText("¿Tienes dudas sobre los productos? Pregunta a Gemini");
         botonAyuda.addActionListener(e -> mostrarVentanaChat());
 
         // la capa PALETTE queda encima de todo lo demas de la ventana
@@ -423,31 +413,22 @@ public class VentanaUsuario extends JFrame {
 
     private void mostrarVentanaChat() {
         if (ventanaChat == null) {
-            ventanaChat = new JDialog(this, "Chat con administración", false);
+            ventanaChat = new JDialog(this, "Asistente de productos", false);
             ventanaChat.setDefaultCloseOperation(JDialog.HIDE_ON_CLOSE);
             ventanaChat.setContentPane(crearPanelChat());
             ventanaChat.setResizable(false);
-            ventanaChat.setSize(480, 360);
+            ventanaChat.setSize(520, 400);
             ventanaChat.setLocationRelativeTo(this);
         }
         ventanaChat.setVisible(true);
         ventanaChat.toFront();
-        conectarChat();
     }
 
     private JPanel crearPanelChat() {
-        // Vista del cliente para conectarse y conversar con el servidor de administración.
+        // Chat general de productos; las consultas se envían a Gemini en segundo plano.
         JPanel panel = new JPanel(new BorderLayout(10, 10));
         panel.setBackground(FONDO);
         panel.setBorder(BorderFactory.createEmptyBorder(16, 16, 16, 16));
-
-        JPanel encabezado = new JPanel(new BorderLayout(8, 0));
-        encabezado.setBackground(FONDO);
-        JButton botonCerrar = new JButton("Cerrar chat");
-        estilizarBoton(botonCerrar, AZUL_MARINO, MARFIL);
-        botonCerrar.addActionListener(e -> ventanaChat.setVisible(false));
-
-        encabezado.add(botonCerrar, BorderLayout.WEST);
 
         areaChat.setEditable(false);
         areaChat.setLineWrap(true);
@@ -455,6 +436,10 @@ public class VentanaUsuario extends JFrame {
         areaChat.setBackground(SUPERFICIE);
         areaChat.setForeground(TEXTO_CLARO);
         areaChat.setCaretColor(TEXTO_CLARO);
+        if (areaChat.getText().isEmpty()) {
+            areaChat.setText("Asistente: Hola, puedo responder tus dudas sobre los productos del catálogo."
+                    + System.lineSeparator());
+        }
         JScrollPane scrollChat = new JScrollPane(areaChat);
         scrollChat.getViewport().setBackground(SUPERFICIE);
 
@@ -464,234 +449,74 @@ public class VentanaUsuario extends JFrame {
         campoMensajeChat.setForeground(TEXTO_CLARO);
         campoMensajeChat.setCaretColor(TEXTO_CLARO);
         estilizarBoton(botonEnviarChat, NARANJA, MARFIL);
-        botonEnviarChat.setEnabled(false);
-        botonEnviarChat.addActionListener(e -> enviarMensajeChat());
-        campoMensajeChat.addActionListener(e -> enviarMensajeChat());
+        botonEnviarChat.addActionListener(e -> enviarConsultaGemini());
+        campoMensajeChat.addActionListener(e -> enviarConsultaGemini());
         panelEnvio.add(campoMensajeChat, BorderLayout.CENTER);
         panelEnvio.add(botonEnviarChat, BorderLayout.EAST);
 
         JPanel pie = new JPanel(new BorderLayout(8, 0));
         pie.setBackground(FONDO);
         estadoChat.setForeground(TEXTO_CLARO);
-        pie.add(estadoChat, BorderLayout.WEST);
+        pie.add(estadoChat, BorderLayout.NORTH);
         pie.add(panelEnvio, BorderLayout.CENTER);
 
-        panel.add(encabezado, BorderLayout.NORTH);
         panel.add(scrollChat, BorderLayout.CENTER);
         panel.add(pie, BorderLayout.SOUTH);
         return panel;
     }
 
-    private void conectarChat() {
-        // Abre el socket en segundo plano para que la ventana siga respondiendo.
-        if (chatConectando || (socketChat != null && !socketChat.isClosed())) {
-            return;
-        }
-        clienteChatCerrado = false;
-        chatConectando = true;
-        botonEnviarChat.setEnabled(false);
-        estadoChat.setText("Conectando...");
-
-        Thread hiloConexion = new Thread(() -> {
-            Socket nuevaConexion = new Socket();
-            try {
-                nuevaConexion.connect(new InetSocketAddress(HOST_CHAT, PUERTO_CHAT), 5000);
-                PrintWriter nuevaSalida = new PrintWriter(
-                        new OutputStreamWriter(nuevaConexion.getOutputStream(), StandardCharsets.UTF_8), true);
-                if (clienteChatCerrado) {
-                    nuevaConexion.close();
-                    return;
-                }
-                socketChat = nuevaConexion;
-                salidaChat = nuevaSalida;
-                SwingUtilities.invokeLater(() -> {
-                    estadoChat.setText("Conectado a " + HOST_CHAT + ":" + PUERTO_CHAT);
-                    botonEnviarChat.setEnabled(true);
-                    enviarMensajesPendientesChat();
-                });
-
-                Thread hiloRecepcion = new Thread(() -> recibirMensajesChat(nuevaConexion), "recepcion-chat");
-                hiloRecepcion.setDaemon(true);
-                hiloRecepcion.start();
-            } catch (IOException ex) {
-                try {
-                    nuevaConexion.close();
-                } catch (IOException errorCierre) {
-                    ex.addSuppressed(errorCierre);
-                }
-                chatConectando = false;
-                if (!clienteChatCerrado) {
-                    SwingUtilities.invokeLater(() -> {
-                        estadoChat.setText("No se pudo conectar: " + ex.getMessage());
-                        areaChat.append("Error de conexión: " + ex.getMessage() + System.lineSeparator());
-                    });
-                }
-            }
-        }, "conexion-chat");
-        hiloConexion.setDaemon(true);
-        hiloConexion.start();
-    }
-
-    private void enviarMensajeChat() {
+    private void enviarConsultaGemini() {
         String mensaje = campoMensajeChat.getText().trim();
-        if (mensaje.isEmpty()) {
+        if (mensaje.isEmpty() || !botonEnviarChat.isEnabled()) {
             return;
         }
         campoMensajeChat.setText("");
         areaChat.append("Tú: " + mensaje + System.lineSeparator());
+        botonEnviarChat.setEnabled(false);
+        campoMensajeChat.setEnabled(false);
+        estadoChat.setText("Consultando a Gemini...");
 
-        if (salidaChat == null || socketChat == null || socketChat.isClosed()) {
-            synchronized (mensajesPendientesChat) {
-                mensajesPendientesChat.add(mensaje);
-            }
-            estadoChat.setText("Mensaje pendiente; conectando...");
-            conectarChat();
-            return;
+        StringBuilder contexto = new StringBuilder("Productos disponibles en el catálogo:\n");
+        for (Producto producto : inventario.getListaProductos()) {
+            contexto.append("- ").append(producto.getNombre())
+                    .append(" | categoría: ").append(producto.getCategoria())
+                    .append(" | precio: $").append(producto.getPrecio())
+                    .append(" | stock: ").append(producto.getStock()).append('\n');
         }
+        contexto.append("\nConversación anterior:\n").append(historialChatGemini)
+                .append("\nPregunta del cliente: ").append(mensaje);
 
-        try {
-            enviarMensajeAlServidor(crearMensajeJson(mensaje));
-        } catch (IOException ex) {
-            synchronized (mensajesPendientesChat) {
-                mensajesPendientesChat.add(mensaje);
+        new SwingWorker<String, Void>() {
+            @Override
+            protected String doInBackground() throws Exception {
+                return GeminiAPIClient.responder(contexto.toString());
             }
-            estadoChat.setText("Mensaje pendiente; reconectando...");
-            desconectarServidorChat();
-            conectarChat();
-        }
-    }
 
-    private void enviarMensajesPendientesChat() {
-        while (salidaChat != null && socketChat != null && !socketChat.isClosed()) {
-            String mensaje;
-            synchronized (mensajesPendientesChat) {
-                mensaje = mensajesPendientesChat.peek();
-            }
-            if (mensaje == null) {
-                return;
-            }
-            try {
-                enviarMensajeAlServidor(crearMensajeJson(mensaje));
-                synchronized (mensajesPendientesChat) {
-                    mensajesPendientesChat.remove();
-                }
-            } catch (IOException ex) {
-                estadoChat.setText("No se pudo enviar el mensaje: " + ex.getMessage());
-                desconectarServidorChat();
-                return;
-            }
-        }
-    }
-
-    private void recibirMensajesChat(Socket socket) {
-        // Escucha mensajes del administrador y actualiza la conversación en pantalla.
-        try (BufferedReader entrada = new BufferedReader(
-                new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8))) {
-            String mensaje;
-            while ((mensaje = entrada.readLine()) != null) {
-                String contenido = extraerCampoJson(mensaje, "content");
-                if ("message".equals(extraerCampoJson(mensaje, "type")) && contenido != null) {
-                    SwingUtilities.invokeLater(
-                            () -> areaChat.append("Admin: " + contenido + System.lineSeparator()));
+            @Override
+            protected void done() {
+                try {
+                    String respuesta = get();
+                    areaChat.append("Gemini: " + respuesta + System.lineSeparator());
+                    historialChatGemini.append("Cliente: ").append(mensaje)
+                            .append("\nAsistente: ").append(respuesta).append('\n');
+                    estadoChat.setText("Asistente de productos");
+                } catch (InterruptedException ex) {
+                    Thread.currentThread().interrupt();
+                    areaChat.append("Error: se interrumpió la consulta." + System.lineSeparator());
+                    estadoChat.setText("Consulta interrumpida");
+                } catch (java.util.concurrent.ExecutionException ex) {
+                    Throwable causa = ex.getCause();
+                    String detalle = causa == null || causa.getMessage() == null
+                            ? ex.getMessage() : causa.getMessage();
+                    areaChat.append("Error al consultar: " + detalle + System.lineSeparator());
+                    estadoChat.setText("No se pudo completar la consulta");
+                } finally {
+                    botonEnviarChat.setEnabled(true);
+                    campoMensajeChat.setEnabled(true);
+                    campoMensajeChat.requestFocusInWindow();
                 }
             }
-        } catch (IOException ex) {
-            if (!clienteChatCerrado && socketChat == socket) {
-                SwingUtilities.invokeLater(
-                        () -> estadoChat.setText("Conexión interrumpida: " + ex.getMessage()));
-            }
-        } finally {
-            boolean conexionActual = socketChat == socket;
-            if (socketChat == socket) {
-                socketChat = null;
-                salidaChat = null;
-            }
-            try {
-                socket.close();
-            } catch (IOException ex) {
-                if (!clienteChatCerrado && conexionActual) {
-                    SwingUtilities.invokeLater(
-                            () -> estadoChat.setText("No se pudo cerrar la conexión: " + ex.getMessage()));
-                }
-            }
-            if (!clienteChatCerrado && conexionActual) {
-                chatConectando = false;
-                SwingUtilities.invokeLater(() -> {
-                    estadoChat.setText("Desconectado");
-                    botonEnviarChat.setEnabled(false);
-                });
-            }
-        }
-    }
-
-    private String crearMensajeJson(String contenido) {
-        // Empaqueta cada texto con el formato JSON que entiende el servidor.
-        return "{\"type\":\"message\",\"content\":\"" + escaparJson(contenido) + "\"}";
-    }
-
-    private String extraerCampoJson(String json, String campo) {
-        Pattern patron = Pattern.compile("\"" + Pattern.quote(campo)
-                + "\"\\s*:\\s*\"((?:\\\\.|[^\"\\\\])*)\"");
-        Matcher coincidencia = patron.matcher(json);
-        return coincidencia.find() ? desescaparJson(coincidencia.group(1)) : null;
-    }
-
-    private String escaparJson(String texto) {
-        return texto.replace("\\", "\\\\")
-                .replace("\"", "\\\"")
-                .replace("\n", "\\n")
-                .replace("\r", "\\r")
-                .replace("\t", "\\t");
-    }
-
-    private String desescaparJson(String texto) {
-        StringBuilder resultado = new StringBuilder();
-        for (int i = 0; i < texto.length(); i++) {
-            char caracter = texto.charAt(i);
-            if (caracter == '\\' && i + 1 < texto.length()) {
-                char escapado = texto.charAt(++i);
-                switch (escapado) {
-                    case 'n': resultado.append('\n'); break;
-                    case 'r': resultado.append('\r'); break;
-                    case 't': resultado.append('\t'); break;
-                    default: resultado.append(escapado); break;
-                }
-            } else {
-                resultado.append(caracter);
-            }
-        }
-        return resultado.toString();
-    }
-
-    private void enviarMensajeAlServidor(String mensaje) throws IOException {
-        PrintWriter salida = salidaChat;
-        Socket socket = socketChat;
-        if (salida == null || socket == null || socket.isClosed()) {
-            throw new IOException("No hay conexión con el administrador.");
-        }
-        salida.println(mensaje);
-        if (salida.checkError()) {
-            throw new IOException("No se pudo enviar el mensaje al administrador.");
-        }
-    }
-
-    private void desconectarServidorChat() {
-        clienteChatCerrado = true;
-        chatConectando = false;
-        Socket socket = socketChat;
-        socketChat = null;
-        salidaChat = null;
-        if (socket != null) {
-            try {
-                socket.close();
-            } catch (IOException ex) {
-                estadoChat.setText("No se pudo cerrar la conexión: " + ex.getMessage());
-            }
-        }
-    }
-
-    private void cerrarClienteChat() {
-        desconectarServidorChat();
+        }.execute();
     }
 
     // arma la grilla de tarjetas del catalogo en el centro de la ventana
@@ -700,8 +525,8 @@ public class VentanaUsuario extends JFrame {
         panel.setBackground(FONDO);
         panel.setBorder(BorderFactory.createEmptyBorder(10, 16, 10, 16));
 
-        // 0 filas y 3 columnas: crea las filas que hagan falta
-        grillaCatalogo = new JPanel(new GridLayout(0, 3, 12, 12));
+        // 0 filas y 4 columnas: crea las filas que hagan falta
+        grillaCatalogo = new JPanel(new GridLayout(0, 5, 12, 12));
         grillaCatalogo.setBackground(FONDO);
 
         // la grilla va arriba para que las tarjetas no se estiren hacia abajo
@@ -745,101 +570,422 @@ public class VentanaUsuario extends JFrame {
 
         tarjeta.add(crearImagen(producto.getId()), BorderLayout.NORTH);
         tarjeta.add(datos, BorderLayout.CENTER);
-        tarjeta.add(btnAgregar, BorderLayout.SOUTH);
+        JButton btnConsultar = new JButton("Consultar sobre este producto");
+        estilizarBoton(btnConsultar, AZUL_MARINO, MARFIL);
+        btnConsultar.addActionListener(e -> consultarProducto(producto));
+
+        JPanel acciones = new JPanel(new GridLayout(2, 1, 0, 6));
+        acciones.setOpaque(false);
+        acciones.add(btnAgregar);
+        acciones.add(btnConsultar);
+
+        tarjeta.add(acciones, BorderLayout.SOUTH);
         return tarjeta;
+    }
+
+    private void consultarProducto(Producto producto) {
+        JDialog dialogo = new JDialog(this, "Consulta sobre " + producto.getNombre(), false);
+        dialogo.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
+
+        JTextArea conversacion = new JTextArea();
+        conversacion.setEditable(false);
+        conversacion.setLineWrap(true);
+        conversacion.setWrapStyleWord(true);
+        conversacion.setBackground(SUPERFICIE);
+        conversacion.setForeground(TEXTO_CLARO);
+        conversacion.append("Asistente: Hola, puedo responder preguntas sobre este producto."
+                + System.lineSeparator());
+        JScrollPane desplazamiento = new JScrollPane(conversacion);
+        desplazamiento.getViewport().setBackground(SUPERFICIE);
+
+        JTextField campoPregunta = new JTextField();
+        campoPregunta.setBackground(SUPERFICIE);
+        campoPregunta.setForeground(TEXTO_CLARO);
+        campoPregunta.setCaretColor(TEXTO_CLARO);
+        JButton botonEnviar = new JButton("Enviar");
+        estilizarBoton(botonEnviar, NARANJA, MARFIL);
+        StringBuilder historial = new StringBuilder();
+
+        Runnable enviarPregunta = () -> {
+            String pregunta = campoPregunta.getText().trim();
+            if (pregunta.isEmpty() || !botonEnviar.isEnabled()) {
+                return;
+            }
+
+            campoPregunta.setText("");
+            conversacion.append("Tú: " + pregunta + System.lineSeparator());
+            botonEnviar.setEnabled(false);
+            campoPregunta.setEnabled(false);
+
+            String contexto = "Producto: " + producto.getNombre()
+                    + "\nCategoría: " + producto.getCategoria()
+                    + "\nPrecio: $" + producto.getPrecio()
+                    + "\nStock disponible: " + producto.getStock()
+                    + "\n\nConversación anterior:\n" + historial
+                    + "\nPregunta del cliente: " + pregunta;
+
+            new SwingWorker<String, Void>() {
+                @Override
+                protected String doInBackground() throws Exception {
+                    return GeminiAPIClient.responder(contexto);
+                }
+
+                @Override
+                protected void done() {
+                    try {
+                        String respuesta = get();
+                        conversacion.append("Asistente: " + respuesta + System.lineSeparator());
+                        historial.append("Cliente: ").append(pregunta)
+                                .append("\nAsistente: ").append(respuesta).append('\n');
+                    } catch (InterruptedException ex) {
+                        Thread.currentThread().interrupt();
+                        conversacion.append("Error: se interrumpió la consulta."
+                                + System.lineSeparator());
+                    } catch (java.util.concurrent.ExecutionException ex) {
+                        Throwable causa = ex.getCause();
+                        String mensaje = causa == null || causa.getMessage() == null
+                                ? ex.getMessage() : causa.getMessage();
+                        conversacion.append("Error al consultar: " + mensaje + System.lineSeparator());
+                    } finally {
+                        botonEnviar.setEnabled(true);
+                        campoPregunta.setEnabled(true);
+                        campoPregunta.requestFocusInWindow();
+                    }
+                }
+            }.execute();
+        };
+        botonEnviar.addActionListener(e -> enviarPregunta.run());
+        campoPregunta.addActionListener(e -> enviarPregunta.run());
+
+        JPanel envio = new JPanel(new BorderLayout(8, 0));
+        envio.setBackground(FONDO);
+        envio.add(campoPregunta, BorderLayout.CENTER);
+        envio.add(botonEnviar, BorderLayout.EAST);
+
+        JPanel contenido = new JPanel(new BorderLayout(8, 8));
+        contenido.setBackground(FONDO);
+        contenido.setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
+        contenido.add(desplazamiento, BorderLayout.CENTER);
+        contenido.add(envio, BorderLayout.SOUTH);
+        dialogo.setContentPane(contenido);
+        dialogo.setSize(520, 400);
+        dialogo.setLocationRelativeTo(this);
+        dialogo.setVisible(true);
+        campoPregunta.requestFocusInWindow();
     }
 
     // busca la foto en la carpeta imagenes con el id del producto
     private JLabel crearImagen(String id) {
         JLabel imagen = new JLabel("sin imagen", SwingConstants.CENTER);
         imagen.setForeground(TEXTO_CLARO);
-        imagen.setPreferredSize(new Dimension(0, 140));
+        imagen.setPreferredSize(new Dimension(0, 220));
         java.io.File archivo = new java.io.File("imagenes/" + id + ".png");
         if (archivo.exists()) {
-            // achica la foto a 130 px de alto sin deformarla
-            Image foto = new ImageIcon(archivo.getPath()).getImage().getScaledInstance(-1, 130, Image.SCALE_SMOOTH);
-            imagen.setIcon(new ImageIcon(foto));
-            imagen.setText("");
+            ImageIcon iconoOriginal = new ImageIcon(archivo.getPath());
+            Image fotoOriginal = iconoOriginal.getImage();
+            if (iconoOriginal.getIconWidth() > 0 && iconoOriginal.getIconHeight() > 0) {
+                imagen.setText("");
+                imagen.addComponentListener(new ComponentAdapter() {
+                    @Override
+                    public void componentResized(ComponentEvent e) {
+                        ajustarImagen(imagen, fotoOriginal);
+                    }
+                });
+                ajustarImagen(imagen, fotoOriginal);
+            }
         }
         return imagen;
     }
 
-    // arma el panel de abajo con el carrito y los botones
-    private JPanel crearPanelCarrito() {
-        // Panel inferior con cantidades, acciones de compra y resumen de precios
-        JPanel panel = new JPanel(new BorderLayout(10, 10));
+    private void ajustarImagen(JLabel etiqueta, Image imagenOriginal) {
+        int anchoDisponible = Math.min(etiqueta.getWidth() - 16, 280);
+        int altoDisponible = etiqueta.getHeight() - 16;
+        if (anchoDisponible <= 0) {
+            anchoDisponible = 260;
+        }
+        if (altoDisponible <= 0) {
+            altoDisponible = 204;
+        }
+
+        double escala = Math.min(
+                (double) anchoDisponible / imagenOriginal.getWidth(null),
+                (double) altoDisponible / imagenOriginal.getHeight(null));
+        int ancho = Math.max(1, (int) (imagenOriginal.getWidth(null) * escala));
+        int alto = Math.max(1, (int) (imagenOriginal.getHeight(null) * escala));
+        Image fotoEscalada = imagenOriginal.getScaledInstance(ancho, alto, Image.SCALE_SMOOTH);
+        etiqueta.setIcon(new ImageIcon(fotoEscalada));
+    }
+
+    private JPanel crearPanelAcciones() {
+        JPanel panel = new JPanel(new FlowLayout(FlowLayout.CENTER, 12, 12));
         panel.setBackground(FONDO);
-        panel.setBorder(BorderFactory.createEmptyBorder(0, 16, 12, 16));
-
-        String[] columnas = {"Producto", "Cantidad", "Subtotal"};
-        modeloCarrito = new DefaultTableModel(columnas, 0) {
-            @Override
-            public boolean isCellEditable(int row, int col) {
-                return false;
-            }
-        };
-        tablaCarrito = new JTable(modeloCarrito);
-        tablaCarrito.setRowHeight(24);
-        tablaCarrito.getTableHeader().setBackground(AZUL_MARINO);
-        tablaCarrito.getTableHeader().setForeground(MARFIL);
-        tablaCarrito.setBackground(SUPERFICIE);
-        tablaCarrito.setForeground(TEXTO_CLARO);
-        JScrollPane scrollCarrito = new JScrollPane(tablaCarrito);
-        scrollCarrito.getViewport().setBackground(SUPERFICIE);
-        scrollCarrito.setPreferredSize(new Dimension(0, 140));
-
-        JPanel controles = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 8));
-        controles.setBackground(FONDO);
 
         JLabel labelCantidad = new JLabel("Cantidad:");
         labelCantidad.setForeground(TEXTO_CLARO);
-        controles.add(labelCantidad);
+        panel.add(labelCantidad);
+
         campoCantidad = new JTextField("1", 4);
         campoCantidad.setBackground(SUPERFICIE);
         campoCantidad.setForeground(TEXTO_CLARO);
         campoCantidad.setCaretColor(TEXTO_CLARO);
-        controles.add(campoCantidad);
+        panel.add(campoCantidad);
 
-        JButton btnComprar = new JButton("Comprar");
-        estilizarBoton(btnComprar, NARANJA, MARFIL);
-        btnComprar.addActionListener(e -> comprarProductos());
-        controles.add(btnComprar);
+        JButton btnAgregar = new JButton("Agregar al carrito");
+        estilizarBoton(btnAgregar, AMARILLO, TEXTO);
+        panel.add(btnAgregar);
 
-        labelTotal = new JLabel("TOTAL: $0");
-        labelTotal.setFont(new Font("SansSerif", Font.BOLD, 16));
-        labelTotal.setForeground(Color.BLACK);
-        controles.add(labelTotal);
+        botonCarrito = new JButton("Carrito (0)");
+        estilizarBoton(botonCarrito, DORADO, TEXTO);
+        botonCarrito.addActionListener(e -> mostrarCarrito());
+        panel.add(botonCarrito);
 
-        JPanel controlesCupon = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 4));
-        controlesCupon.setBackground(FONDO);
-        JLabel etiquetaCupon = new JLabel("Cupón:");
-        etiquetaCupon.setForeground(TEXTO_CLARO);
-        campoCupon = new JTextField(12);
-        campoCupon.setBackground(SUPERFICIE);
-        campoCupon.setForeground(TEXTO_CLARO);
-        campoCupon.setCaretColor(TEXTO_CLARO);
+        return panel;
+     }
+
+    private void mostrarCarrito() {
+        if (ventanaCarrito != null && ventanaCarrito.isDisplayable()) {
+            ventanaCarrito.setVisible(true);
+            ventanaCarrito.toFront();
+            return;
+        }
+        ventanaCarrito = new JFrame("Mi carrito - Tienda");
+        ventanaCarrito.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
+        ventanaCarrito.setContentPane(crearPanelCarrito());
+        ventanaCarrito.setSize(getSize());
+        ventanaCarrito.setMinimumSize(new Dimension(620, 500));
+        ventanaCarrito.setLocationRelativeTo(this);
+        ventanaCarrito.setExtendedState(getExtendedState());
+        ventanaCarrito.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent e) {
+                volverAlCatalogo();
+            }
+        });
+        actualizarVista();
+        setVisible(false);
+        ventanaCarrito.setVisible(true);
+    }
+
+    private void volverAlCatalogo() {
+        if (ventanaCarrito != null) {
+            ventanaCarrito.dispose();
+            ventanaCarrito = null;
+        }
+        setVisible(true);
+        toFront();
+    }
+
+    private Component ventanaActiva() {
+        return ventanaCarrito == null ? this : ventanaCarrito;
+    }
+
+    private JPanel crearPanelCarrito() {
+        JPanel panel = new JPanel(new BorderLayout(18, 18));
+        panel.setBackground(FONDO);
+        panel.setBorder(BorderFactory.createEmptyBorder(22, 24, 22, 24));
+
+        JPanel encabezado = new JPanel(new BorderLayout(12, 4));
+        encabezado.setBackground(AZUL_MARINO);
+        encabezado.setBorder(BorderFactory.createEmptyBorder(18, 20, 18, 20));
+        JPanel titulos = new JPanel();
+        titulos.setOpaque(false);
+        titulos.setLayout(new BoxLayout(titulos, BoxLayout.Y_AXIS));
+        JLabel titulo = new JLabel("Tu carrito");
+        titulo.setFont(new Font("SansSerif", Font.BOLD, 26));
+        titulo.setForeground(MARFIL);
+        JLabel subtitulo = new JLabel("Revisa tus productos antes de finalizar la compra.");
+        subtitulo.setFont(new Font("SansSerif", Font.PLAIN, 13));
+        subtitulo.setForeground(new Color(220, 230, 240));
+        titulos.add(titulo);
+        titulos.add(Box.createVerticalStrut(4));
+        titulos.add(subtitulo);
+        cantidadProductosCarrito = new JLabel("0 productos");
+        cantidadProductosCarrito.setFont(new Font("SansSerif", Font.BOLD, 14));
+        cantidadProductosCarrito.setForeground(MARFIL);
+        cantidadProductosCarrito.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(95, 133, 171)),
+                BorderFactory.createEmptyBorder(8, 12, 8, 12)));
+        encabezado.add(titulos, BorderLayout.CENTER);
+        encabezado.add(cantidadProductosCarrito, BorderLayout.EAST);
+        panel.add(encabezado, BorderLayout.NORTH);
+
+        JPanel centro = new JPanel(new BorderLayout());
+        centro.setBackground(MARFIL);
+        centro.setBorder(BorderFactory.createLineBorder(new Color(215, 203, 184)));
+        String[] columnas = {"Producto", "Cantidad", "Subtotal"};
+        modeloCarrito = new DefaultTableModel(columnas, 0) {
+            @Override
+            public boolean isCellEditable(int fila, int columna) {
+                return false;
+            }
+        };
+        tablaCarrito = new JTable(modeloCarrito);
+        tablaCarrito.setRowHeight(40);
+        tablaCarrito.setBackground(MARFIL);
+        tablaCarrito.setForeground(TEXTO);
+        tablaCarrito.setSelectionBackground(new Color(220, 232, 244));
+        tablaCarrito.setSelectionForeground(TEXTO);
+        tablaCarrito.setGridColor(new Color(229, 220, 205));
+        tablaCarrito.setShowVerticalLines(false);
+        tablaCarrito.setIntercellSpacing(new Dimension(0, 1));
+        tablaCarrito.setFillsViewportHeight(true);
+        tablaCarrito.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        tablaCarrito.getTableHeader().setBackground(AZUL_MARINO);
+        tablaCarrito.getTableHeader().setForeground(MARFIL);
+        tablaCarrito.getTableHeader().setFont(new Font("SansSerif", Font.BOLD, 13));
+        tablaCarrito.getTableHeader().setPreferredSize(new Dimension(0, 38));
+        tablaCarrito.getColumnModel().getColumn(0).setPreferredWidth(380);
+        tablaCarrito.getColumnModel().getColumn(1).setPreferredWidth(100);
+        tablaCarrito.getColumnModel().getColumn(2).setPreferredWidth(150);
+        JScrollPane scroll = new JScrollPane(tablaCarrito);
+        scroll.setBorder(BorderFactory.createEmptyBorder());
+        scroll.getViewport().setBackground(MARFIL);
+
+        tarjetasCarrito = new CardLayout();
+        contenidoCarrito = new JPanel(tarjetasCarrito);
+        contenidoCarrito.setBackground(MARFIL);
+        JPanel vacio = new JPanel();
+        vacio.setBackground(MARFIL);
+        vacio.setLayout(new BoxLayout(vacio, BoxLayout.Y_AXIS));
+        JLabel iconoVacio = new JLabel("♡", SwingConstants.CENTER);
+        iconoVacio.setFont(new Font("SansSerif", Font.PLAIN, 52));
+        iconoVacio.setForeground(AZUL);
+        iconoVacio.setAlignmentX(Component.CENTER_ALIGNMENT);
+        JLabel mensajeVacio = new JLabel("Tu carrito está vacío", SwingConstants.CENTER);
+        mensajeVacio.setFont(new Font("SansSerif", Font.BOLD, 20));
+        mensajeVacio.setForeground(TEXTO);
+        mensajeVacio.setAlignmentX(Component.CENTER_ALIGNMENT);
+        JLabel ayudaVacio = new JLabel("Explora el catálogo y agrega tus productos favoritos.",
+                SwingConstants.CENTER);
+        ayudaVacio.setFont(new Font("SansSerif", Font.PLAIN, 14));
+        ayudaVacio.setForeground(TEXTO_CLARO);
+        ayudaVacio.setAlignmentX(Component.CENTER_ALIGNMENT);
+        vacio.add(Box.createVerticalGlue());
+        vacio.add(iconoVacio);
+        vacio.add(Box.createVerticalStrut(8));
+        vacio.add(mensajeVacio);
+        vacio.add(Box.createVerticalStrut(6));
+        vacio.add(ayudaVacio);
+        vacio.add(Box.createVerticalGlue());
+        contenidoCarrito.add(scroll, "productos");
+        contenidoCarrito.add(vacio, "vacio");
+        centro.add(contenidoCarrito, BorderLayout.CENTER);
+        panel.add(centro, BorderLayout.CENTER);
+
+        JPanel inferior = new JPanel(new BorderLayout(12, 14));
+        inferior.setBackground(FONDO);
+        JPanel detalleCompra = new JPanel(new BorderLayout(8, 8));
+        detalleCompra.setBackground(FONDO);
+        JPanel seccionCupon = new JPanel(new BorderLayout(8, 6));
+        seccionCupon.setBackground(MARFIL);
+        seccionCupon.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(215, 203, 184)),
+                BorderFactory.createEmptyBorder(8, 12, 8, 12)));
+        JLabel tituloCupon = new JLabel("¿Tienes un cupón de descuento?");
+        tituloCupon.setForeground(TEXTO);
+        tituloCupon.setFont(new Font("SansSerif", Font.BOLD, 13));
+        campoCupon = new JTextField(16);
         JButton botonAplicarCupon = new JButton("Aplicar");
         estilizarBoton(botonAplicarCupon, AZUL_MARINO, MARFIL);
         botonAplicarCupon.addActionListener(e -> aplicarCupon());
         JButton botonQuitarCupon = new JButton("Quitar");
         estilizarBoton(botonQuitarCupon, SUPERFICIE, TEXTO);
         botonQuitarCupon.addActionListener(e -> quitarCupon());
-        labelResumenCompra = new JLabel("Subtotal: $0 | Descuento: $0 | IVA: $0");
-        labelResumenCompra.setForeground(TEXTO_CLARO);
-        controlesCupon.add(etiquetaCupon);
+        JPanel controlesCupon = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+        controlesCupon.setBackground(MARFIL);
         controlesCupon.add(campoCupon);
         controlesCupon.add(botonAplicarCupon);
         controlesCupon.add(botonQuitarCupon);
-        controlesCupon.add(labelResumenCompra);
+        seccionCupon.add(tituloCupon, BorderLayout.NORTH);
+        seccionCupon.add(controlesCupon, BorderLayout.CENTER);
 
-        JPanel controlesSuperiores = new JPanel(new BorderLayout());
-        controlesSuperiores.setBackground(FONDO);
-        controlesSuperiores.add(controles, BorderLayout.NORTH);
-        controlesSuperiores.add(controlesCupon, BorderLayout.SOUTH);
-        panel.add(controlesSuperiores, BorderLayout.NORTH);
-        panel.add(scrollCarrito, BorderLayout.CENTER);
+        JPanel resumen = new JPanel(new GridLayout(4, 2, 12, 7));
+        resumen.setBackground(MARFIL);
+        resumen.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(215, 203, 184)),
+                BorderFactory.createEmptyBorder(12, 16, 12, 16)));
+        JLabel labelSubtotal = new JLabel("Subtotal");
+        JLabel labelDescuento = new JLabel("Descuento");
+        JLabel labelIVA = new JLabel("IVA (19%)");
+        JLabel labelTotalTexto = new JLabel("Total");
+        valorSubtotalCarrito = new JLabel("$0", SwingConstants.RIGHT);
+        valorDescuentoCarrito = new JLabel("$0", SwingConstants.RIGHT);
+        valorIVACarrito = new JLabel("$0", SwingConstants.RIGHT);
+        labelTotal = new JLabel("$0", SwingConstants.RIGHT);
+        for (JLabel etiqueta : new JLabel[] {labelSubtotal, labelDescuento, labelIVA}) {
+            etiqueta.setForeground(TEXTO_CLARO);
+            etiqueta.setFont(new Font("SansSerif", Font.PLAIN, 14));
+        }
+        for (JLabel valor : new JLabel[] {valorSubtotalCarrito, valorDescuentoCarrito, valorIVACarrito}) {
+            valor.setForeground(TEXTO);
+            valor.setFont(new Font("SansSerif", Font.PLAIN, 14));
+        }
+        labelTotalTexto.setForeground(TEXTO);
+        labelTotalTexto.setFont(new Font("SansSerif", Font.BOLD, 17));
+        labelTotal.setForeground(AZUL_MARINO);
+        labelTotal.setFont(new Font("SansSerif", Font.BOLD, 20));
+        resumen.add(labelSubtotal);
+        resumen.add(valorSubtotalCarrito);
+        resumen.add(labelDescuento);
+        resumen.add(valorDescuentoCarrito);
+        resumen.add(labelIVA);
+        resumen.add(valorIVACarrito);
+        resumen.add(labelTotalTexto);
+        resumen.add(labelTotal);
+        detalleCompra.add(seccionCupon, BorderLayout.NORTH);
+        detalleCompra.add(resumen, BorderLayout.CENTER);
+        inferior.add(detalleCompra, BorderLayout.CENTER);
+
+        JPanel pie = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        pie.setBackground(FONDO);
+        JButton btnCerrar = new JButton("← Volver al catálogo");
+        estilizarBoton(btnCerrar, AZUL_MARINO, MARFIL);
+        btnCerrar.addActionListener(e -> volverAlCatalogo());
+        pie.add(btnCerrar);
+        botonVaciarCarrito = new JButton("Vaciar carrito");
+        estilizarBoton(botonVaciarCarrito, SUPERFICIE, TEXTO);
+        botonVaciarCarrito.addActionListener(e -> {
+            if (carrito.getProductos().isEmpty()) {
+                JOptionPane.showMessageDialog(ventanaActiva(), "El carrito ya está vacío.",
+                        "Carrito", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+            carrito.vaciarCarrito();
+            cuponAplicado = null;
+            campoCupon.setText("");
+            actualizarVista();
+        });
+        pie.add(botonVaciarCarrito);
+        botonQuitarUnidadCarrito = new JButton("Quitar unidad");
+        estilizarBoton(botonQuitarUnidadCarrito, SUPERFICIE, TEXTO);
+        botonQuitarUnidadCarrito.setToolTipText("Quita una unidad del producto seleccionado.");
+        botonQuitarUnidadCarrito.addActionListener(e -> {
+            int filaSeleccionada = tablaCarrito.getSelectedRow();
+            if (filaSeleccionada < 0) {
+                JOptionPane.showMessageDialog(ventanaActiva(), "Selecciona un producto para quitar una unidad.",
+                        "Carrito", JOptionPane.INFORMATION_MESSAGE);
+                return;
+            }
+            carrito.quitarUnidad(tablaCarrito.convertRowIndexToModel(filaSeleccionada));
+            inventario.guardarEnArchivo();
+            actualizarVista();
+        });
+        pie.add(botonQuitarUnidadCarrito);
+        botonComprarCarrito = new JButton("Comprar");
+        estilizarBoton(botonComprarCarrito, NARANJA, MARFIL);
+        botonComprarCarrito.addActionListener(e -> comprarProductos());
+        botonComprarCarrito.setFont(new Font("SansSerif", Font.BOLD, 14));
+        pie.add(botonComprarCarrito);
+        inferior.add(pie, BorderLayout.SOUTH);
+        panel.add(inferior, BorderLayout.SOUTH);
         return panel;
     }
+
+    private String formatearPrecio(double monto) {
+        return "$" + NumberFormat.getIntegerInstance(new Locale("es", "CL"))
+                .format(Math.round(monto));
+    }
+
 
     // le da el mismo estilo a los botones para no repetir codigo
     private void estilizarBoton(JButton boton, Color fondo, Color texto) {
@@ -890,6 +1036,7 @@ public class VentanaUsuario extends JFrame {
             }
             agregadas++;
         }
+        inventario.guardarEnArchivo(); // persiste la reserva
 
         if (agregadas == 0) {
             JOptionPane.showMessageDialog(this, "No hay stock suficiente para ese producto.", "Stock insuficiente",
@@ -903,7 +1050,7 @@ public class VentanaUsuario extends JFrame {
     private void comprarProductos() {
         // Calcula los importes, registra la venta y persiste el stock actualizado.
         if (carrito.getProductos().isEmpty()) {
-            JOptionPane.showMessageDialog(this, "El carrito está vacío.", "Compra",
+            JOptionPane.showMessageDialog(ventanaActiva(), "El carrito está vacío.", "Compra",
                     JOptionPane.WARNING_MESSAGE);
             return;
         }
@@ -919,13 +1066,13 @@ public class VentanaUsuario extends JFrame {
                 String motivo = cuponCompra == null ? "El cupón ya no está disponible." : cuponCompra.validar();
                 if (motivo != null) {
                     quitarCupon();
-                    JOptionPane.showMessageDialog(this, motivo, "Cupón no disponible",
+                    JOptionPane.showMessageDialog(ventanaActiva(), motivo, "Cupón no disponible",
                             JOptionPane.WARNING_MESSAGE);
                     return;
                 }
             }
         } catch (IOException ex) {
-            JOptionPane.showMessageDialog(this, "No se pudieron cargar los cupones: " + ex.getMessage(),
+            JOptionPane.showMessageDialog(ventanaActiva(), "No se pudieron cargar los cupones: " + ex.getMessage(),
                     "Error al cargar cupones", JOptionPane.ERROR_MESSAGE);
             return;
         }
@@ -937,7 +1084,7 @@ public class VentanaUsuario extends JFrame {
         double iva = carrito.calcularIVA(subtotalConDescuento);
         double total = subtotalConDescuento + iva;
 
-        // construye el detalle 
+        // construye el detalle
         StringBuilder detalles = new StringBuilder();
         for (Producto p : carrito.getProductos()) {
             int cant = carrito.getCantidad(p.getId());
@@ -948,10 +1095,10 @@ public class VentanaUsuario extends JFrame {
                     .append(formatearPrecio(descuento)).append(") | ");
         }
 
-        // crea el gestor y genera una nueva venta 
+        // crea el gestor y genera una nueva venta
         GestorVentas gestorVentas = new GestorVentas();
         String numeroTicket = usuario == null ? "" : usuario.getRut();
-        java.util.Date fechaActual = new java.util.Date(); 
+        java.util.Date fechaActual = new java.util.Date();
         String nombreCompleto = usuario == null ? "Invitado" : usuario.getNombre() + " " + usuario.getApellido();
 
         Venta nuevaVenta = new Venta(
@@ -974,7 +1121,7 @@ public class VentanaUsuario extends JFrame {
                 gestorVentas.guardarVenta(nuevaVenta);
             }
         } catch (IOException e) {
-            JOptionPane.showMessageDialog(this, "No se pudo guardar la venta: " + e.getMessage(),
+            JOptionPane.showMessageDialog(ventanaActiva(), "No se pudo guardar la venta: " + e.getMessage(),
                     "Error al guardar la venta", JOptionPane.ERROR_MESSAGE);
             return;
         }
@@ -982,7 +1129,7 @@ public class VentanaUsuario extends JFrame {
             try {
                 gestorCupones.registrarUso(cuponCompra.getCodigo());
             } catch (IOException ex) {
-                JOptionPane.showMessageDialog(this,
+                JOptionPane.showMessageDialog(ventanaActiva(),
                         "La compra quedó registrada, pero no se pudo actualizar el uso del cupón: "
                                 + ex.getMessage(),
                         "Error al actualizar cupón", JOptionPane.ERROR_MESSAGE);
@@ -992,41 +1139,81 @@ public class VentanaUsuario extends JFrame {
         inventario.guardarEnArchivo();
         cuponAplicado = null;
         campoCupon.setText("");
-        
-        JOptionPane.showMessageDialog(this, "Tu ticket de venta es el número: " + numeroTicket,
+
+        JOptionPane.showMessageDialog(ventanaActiva(), "Tu ticket de venta es el número: " + numeroTicket,
                 "Ticket de venta",
             JOptionPane.INFORMATION_MESSAGE);
         actualizarVista();
     }
 
+
     public void actualizarVista() {
+
         // Sincroniza catálogo, carrito y totales con los datos actuales de la compra.
         // vuelve a armar las tarjetas con lo que hay en inventario
         cargarProductosEnGrilla(inventario.getListaProductos());
 
-        // vuelve a llenar la tabla del carrito
-        modeloCarrito.setRowCount(0);
+        // Actualiza el contador del carrito
+        int cantidadTotal = 0;
+
         for (Producto p : carrito.getProductos()) {
-            modeloCarrito.addRow(new Object[]{
-                    p.getNombre(),
-                    carrito.getCantidad(p.getId()),
-                    "$" + carrito.calcularSubtotal(p.getId())
-            });
+            cantidadTotal += carrito.getCantidad(p.getId());
+    }
+
+        if (botonCarrito != null) {
+            botonCarrito.setText("Carrito (" + cantidadTotal + ")");
+        }
+        if (cantidadProductosCarrito != null) {
+            cantidadProductosCarrito.setText(cantidadTotal + (cantidadTotal == 1 ? " producto" : " productos"));
+        }
+        boolean carritoTieneProductos = !carrito.getProductos().isEmpty();
+        if (botonComprarCarrito != null) {
+            botonComprarCarrito.setEnabled(carritoTieneProductos);
+        }
+        if (botonVaciarCarrito != null) {
+            botonVaciarCarrito.setEnabled(carritoTieneProductos);
+        }
+        if (botonQuitarUnidadCarrito != null) {
+            botonQuitarUnidadCarrito.setEnabled(carritoTieneProductos);
         }
 
-        double subtotal = carrito.calcularSubtotalCarrito();
-        double descuento = cuponAplicado == null ? 0 : cuponAplicado.calcularDescuento(subtotal);
-        double subtotalConDescuento = subtotal - descuento;
-        double iva = carrito.calcularIVA(subtotalConDescuento);
-        labelResumenCompra.setText("Subtotal: " + formatearPrecio(subtotal)
-                + " | Descuento: -" + formatearPrecio(descuento)
-                + " | IVA: " + formatearPrecio(iva));
-        labelTotal.setText("TOTAL: " + formatearPrecio(subtotalConDescuento + iva));
+        // Actualiza la tabla solo si fue creada al abrir el carrito
+        if (modeloCarrito != null) {
+            modeloCarrito.setRowCount(0);
+
+            for (Producto p : carrito.getProductos()) {
+                modeloCarrito.addRow(new Object[]{
+                    p.getNombre(),
+                    carrito.getCantidad(p.getId()),
+                    formatearPrecio(carrito.calcularSubtotal(p.getId()))
+                });
+            }
+        }
+
+        if (valorSubtotalCarrito != null && valorDescuentoCarrito != null && valorIVACarrito != null) {
+            double subtotal = carrito.calcularSubtotalCarrito();
+            double descuento = cuponAplicado == null ? 0 : cuponAplicado.calcularDescuento(subtotal);
+            double subtotalConDescuento = subtotal - descuento;
+            valorSubtotalCarrito.setText(formatearPrecio(subtotal));
+            valorDescuentoCarrito.setText(formatearPrecio(descuento));
+            valorIVACarrito.setText(formatearPrecio(carrito.calcularIVA(subtotalConDescuento)));
+            if (labelTotal != null) {
+                labelTotal.setText(formatearPrecio(subtotalConDescuento
+                        + carrito.calcularIVA(subtotalConDescuento)));
+            }
+        }
+        if (labelTotal != null && valorDescuentoCarrito == null) {
+            labelTotal.setText(formatearPrecio(carrito.calcularTotal()));
+        }
+        if (contenidoCarrito != null && tarjetasCarrito != null) {
+            tarjetasCarrito.show(contenidoCarrito,
+                    carrito.getProductos().isEmpty() ? "vacio" : "productos");
+        }
     }
 
     private void aplicarCupon() {
         if (carrito.getProductos().isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Agrega productos antes de aplicar un cupón.",
+            JOptionPane.showMessageDialog(ventanaActiva(), "Agrega productos antes de aplicar un cupón.",
                     "Carrito vacío", JOptionPane.WARNING_MESSAGE);
             return;
         }
@@ -1036,26 +1223,27 @@ public class VentanaUsuario extends JFrame {
             Cupon cupon = new GestorCupones().buscar(codigo);
             if (cupon == null) {
                 quitarCupon();
-                JOptionPane.showMessageDialog(this, "El código ingresado no existe.",
+                JOptionPane.showMessageDialog(ventanaActiva(), "El código ingresado no existe.",
                         "Cupón no encontrado", JOptionPane.WARNING_MESSAGE);
                 return;
             }
             String motivo = cupon.validar();
             if (motivo != null) {
                 quitarCupon();
-                JOptionPane.showMessageDialog(this, motivo, "Cupón no disponible",
+                JOptionPane.showMessageDialog(ventanaActiva(), motivo, "Cupón no disponible",
                         JOptionPane.WARNING_MESSAGE);
                 return;
             }
+
             cuponAplicado = cupon;
             campoCupon.setText(cupon.getCodigo());
             actualizarVista();
-            JOptionPane.showMessageDialog(this,
+            JOptionPane.showMessageDialog(ventanaActiva(),
                     "Cupón aplicado. Ahorras "
                             + formatearPrecio(cupon.calcularDescuento(carrito.calcularSubtotalCarrito())) + ".",
                     "Descuento aplicado", JOptionPane.INFORMATION_MESSAGE);
         } catch (IOException ex) {
-            JOptionPane.showMessageDialog(this, "No se pudieron cargar los cupones: " + ex.getMessage(),
+            JOptionPane.showMessageDialog(ventanaActiva(), "No se pudieron cargar los cupones: " + ex.getMessage(),
                     "Error al cargar cupones", JOptionPane.ERROR_MESSAGE);
         }
     }
@@ -1068,10 +1256,6 @@ public class VentanaUsuario extends JFrame {
         actualizarVista();
     }
 
-    private String formatearPrecio(double monto) {
-        return "$" + NumberFormat.getIntegerInstance(new Locale("es", "CL"))
-                .format(Math.round(monto));
-    }
 
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> new VentanaUsuario().setVisible(true));

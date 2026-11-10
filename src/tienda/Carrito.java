@@ -55,7 +55,16 @@ public boolean agregarProducto(Producto producto) {
 
     return true;
 }
-
+// quita una unidad del producto y la devuelve al stock
+public void quitarUnidad(int posicion) {
+    productos.get(posicion).setStock(productos.get(posicion).getStock() + 1);
+    if (cantidades.get(posicion) == 1) {
+        productos.remove(posicion);
+        cantidades.remove(posicion);
+    } else {
+        cantidades.set(posicion, cantidades.get(posicion) - 1);
+    }
+}
 
 // entrega los productos del carrito
 public ArrayList<Producto> getProductos() {

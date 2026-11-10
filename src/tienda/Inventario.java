@@ -85,7 +85,6 @@ public class Inventario {
     }
 
     public void recargarDesdeArchivo() {
-        this.listaProductos.clear();
         cargarDesdeArchivo();
     }
 
@@ -256,10 +255,6 @@ public class Inventario {
     private void cargarDesdeArchivo() {
         // lee los productos guardados en el archivo
         File archivo = new File(RUTA_ARCHIVO);
-
-        // limpia la memoria antes de recargar desde el archivo para evitar duplicados
-        listaProductos.clear();
-
         // crea un archivo vacio si no existe
         if (!archivo.exists()) {
             guardarEnArchivo();

@@ -1,3 +1,4 @@
 ﻿*.class
 src/inventario.csv
 src/usuarios.csv
+gemini-api-key.txt

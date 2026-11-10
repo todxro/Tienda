@@ -7,7 +7,6 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Date;
 
 // Registra, valida y carga las cuentas de usuario desde usuarios.csv.
 public class GestorUsuarios {
@@ -74,8 +73,7 @@ public class GestorUsuarios {
             return false;
         }
 
-        usuarios.add(new Usuario(nombre, apellido, contrasenia, "", "", "", "", correo, 0,
-                new Date(), rut));
+        usuarios.add(new Usuario(nombre, apellido, contrasenia, correo, rut));
         // guarda el nuevo usuario en el archivo
         guardarUsuarios();
         return true;
@@ -114,8 +112,7 @@ public class GestorUsuarios {
                     String correo = datos[2];
                     String contrasenia = datos[3];
                     String rut = datos.length == 5 ? datos[4] : "";
-                    usuarios.add(new Usuario(nombre, apellido, contrasenia,
-                            "", "", "", "", correo, 0, new Date(), rut));
+                    usuarios.add(new Usuario(nombre, apellido, contrasenia, correo, rut));
                 }
             }
         } catch (IOException e) {
