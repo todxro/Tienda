@@ -83,7 +83,8 @@ public class VentanaUsuario extends JFrame {
     private volatile PrintWriter salidaChat;
     private volatile boolean clienteChatCerrado;
     private volatile boolean chatConectando;
-    
+    private Temporizador temporizador;
+    private JLabel lblcontador = new JLabel("--:--"); 
 
     public VentanaUsuario() {
         this(null);
@@ -229,6 +230,10 @@ public class VentanaUsuario extends JFrame {
         tarjetas.show(paneles, "catalogo");
         getRootPane().setDefaultButton(null);
         actualizarVista();
+        if (temporizador != null) {
+            temporizador.detener();
+        }
+        temporizador = new Temporizador(carrito, inventario, 5 , lblcontador, this); //cambiar el numero es para cambiar el coso
         paneles.revalidate();
         paneles.repaint();
     }
@@ -336,6 +341,8 @@ public class VentanaUsuario extends JFrame {
             estilizarBoton(btnCerrarSesion, DORADO, TEXTO);
             btnCerrarSesion.addActionListener(e -> {
                 usuario = null;
+                carrito.vaciarCarrito();
+                inventario.guardarEnArchivo();
                 carrito = new Carrito();
                 mostrarCatalogo();
             });
@@ -830,7 +837,8 @@ public class VentanaUsuario extends JFrame {
         estilizarBoton(botonCarrito, DORADO, TEXTO);
         botonCarrito.addActionListener(e -> mostrarCarrito());
         panel.add(botonCarrito);
-
+        panel.add(new JLabel("Reserva:"));
+        panel.add(lblcontador);
         return panel;
      }
     
@@ -1012,6 +1020,8 @@ public class VentanaUsuario extends JFrame {
                 return;
             }
             carrito.vaciarCarrito();
+            inventario.guardarEnArchivo();
+            temporizador.reiniciar();
             actualizarVista();
         });
         pie.add(botonVaciarCarrito);
@@ -1027,6 +1037,7 @@ public class VentanaUsuario extends JFrame {
             }
             carrito.quitarUnidad(tablaCarrito.convertRowIndexToModel(filaSeleccionada));
             inventario.guardarEnArchivo();
+            temporizador.reiniciar();
             actualizarVista();
         });
         pie.add(botonQuitarUnidadCarrito);
@@ -1096,6 +1107,7 @@ public class VentanaUsuario extends JFrame {
             agregadas++;
         }
         inventario.guardarEnArchivo(); // persiste la reserva
+        temporizador.reiniciar();
 
         if (agregadas == 0) {
             JOptionPane.showMessageDialog(this, "No hay stock suficiente para ese producto.", "Stock insuficiente",
@@ -1169,6 +1181,7 @@ public class VentanaUsuario extends JFrame {
             return;
         }
         inventario.guardarEnArchivo();
+        temporizador.reiniciar();
         
         JOptionPane.showMessageDialog(ventanaActiva(), "Tu ticket de venta es el número: " + numeroTicket,
                 "Ticket de venta",
