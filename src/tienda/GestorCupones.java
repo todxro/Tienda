@@ -16,34 +16,31 @@ public class GestorCupones {
 
     private final List<Cupon> cupones = new ArrayList<>();
 
-    public GestorCupones() {
+    public GestorCupones() throws IOException {
         cargar();
     }
 
     // lee el archivo y llena la lista, salta las lineas con formato malo
-    private void cargar() {
+    private void cargar() throws IOException {
         cupones.clear();
         Path ruta = Paths.get(RUTA_ARCHIVO);
         if (!Files.exists(ruta)) {
             return;
         }
-        try {
-            List<String> lineas = Files.readAllLines(ruta, StandardCharsets.UTF_8);
-            for (int i = 1; i < lineas.size(); i++) {
-                String[] d = lineas.get(i).split(",", -1);
-                if (d.length < 6) {
-                    continue;
-                }
-                try {
-                    cupones.add(new Cupon(d[0].trim(), d[1].trim(), Double.parseDouble(d[2]),
-                            LocalDate.parse(d[3].trim()), Integer.parseInt(d[4].trim()),
-                            Integer.parseInt(d[5].trim())));
-                } catch (RuntimeException e) {
-                    // linea con datos invalidos, se ignora
-                }
+        List<String> lineas = Files.readAllLines(ruta, StandardCharsets.UTF_8);
+        for (int i = 1; i < lineas.size(); i++) {
+            String[] d = lineas.get(i).split(",", -1);
+            if (d.length < 6) {
+                continue;
             }
-        } catch (IOException e) {
-            System.out.println("No se pudo leer cupones.csv: " + e.getMessage());
+            try {
+                cupones.add(new Cupon(d[0].trim(), d[1].trim(), Double.parseDouble(d[2]),
+                        LocalDate.parse(d[3].trim()), Integer.parseInt(d[4].trim()),
+                        Integer.parseInt(d[5].trim())));
+            } catch (RuntimeException e) {
+                System.err.println("Se ignoró la línea inválida " + (i + 1) + " de cupones.csv: "
+                        + e.getMessage());
+            }
         }
     }
 

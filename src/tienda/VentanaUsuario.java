@@ -44,6 +44,7 @@ public class VentanaUsuario extends JFrame {
     private DefaultTableModel modeloCarrito;
     private JLabel cantidadProductosCarrito;
     private JLabel valorSubtotalCarrito;
+    private JLabel valorDescuentoCarrito;
     private JLabel valorIVACarrito;
     private JPanel contenidoCarrito;
     private CardLayout tarjetasCarrito;
@@ -51,6 +52,7 @@ public class VentanaUsuario extends JFrame {
     private JButton botonVaciarCarrito;
     private JButton botonQuitarUnidadCarrito;
     private JTextField campoCantidad;
+    private JTextField campoCupon;
     private JLabel labelTotal;
     private JButton botonIniciarSesion;
     private JButton botonCarrito;
@@ -871,22 +873,50 @@ public class VentanaUsuario extends JFrame {
 
         JPanel inferior = new JPanel(new BorderLayout(12, 14));
         inferior.setBackground(FONDO);
-        JPanel resumen = new JPanel(new GridLayout(3, 2, 12, 7));
+        JPanel detalleCompra = new JPanel(new BorderLayout(8, 8));
+        detalleCompra.setBackground(FONDO);
+        JPanel seccionCupon = new JPanel(new BorderLayout(8, 6));
+        seccionCupon.setBackground(MARFIL);
+        seccionCupon.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(215, 203, 184)),
+                BorderFactory.createEmptyBorder(8, 12, 8, 12)));
+        JLabel tituloCupon = new JLabel("¿Tienes un cupón de descuento?");
+        tituloCupon.setForeground(TEXTO);
+        tituloCupon.setFont(new Font("SansSerif", Font.BOLD, 13));
+        Cupon cuponActual = carrito.getCupon();
+        campoCupon = new JTextField(cuponActual == null ? "" : cuponActual.getCodigo(), 16);
+        JButton botonAplicarCupon = new JButton("Aplicar");
+        estilizarBoton(botonAplicarCupon, AZUL_MARINO, MARFIL);
+        botonAplicarCupon.addActionListener(e -> aplicarCupon());
+        JButton botonQuitarCupon = new JButton("Quitar");
+        estilizarBoton(botonQuitarCupon, SUPERFICIE, TEXTO);
+        botonQuitarCupon.addActionListener(e -> quitarCupon());
+        JPanel controlesCupon = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+        controlesCupon.setBackground(MARFIL);
+        controlesCupon.add(campoCupon);
+        controlesCupon.add(botonAplicarCupon);
+        controlesCupon.add(botonQuitarCupon);
+        seccionCupon.add(tituloCupon, BorderLayout.NORTH);
+        seccionCupon.add(controlesCupon, BorderLayout.CENTER);
+
+        JPanel resumen = new JPanel(new GridLayout(4, 2, 12, 7));
         resumen.setBackground(MARFIL);
         resumen.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(new Color(215, 203, 184)),
                 BorderFactory.createEmptyBorder(12, 16, 12, 16)));
         JLabel labelSubtotal = new JLabel("Subtotal");
+        JLabel labelDescuento = new JLabel("Descuento");
         JLabel labelIVA = new JLabel("IVA (19%)");
         JLabel labelTotalTexto = new JLabel("Total");
         valorSubtotalCarrito = new JLabel("$0", SwingConstants.RIGHT);
+        valorDescuentoCarrito = new JLabel("$0", SwingConstants.RIGHT);
         valorIVACarrito = new JLabel("$0", SwingConstants.RIGHT);
         labelTotal = new JLabel("$0", SwingConstants.RIGHT);
-        for (JLabel etiqueta : new JLabel[] {labelSubtotal, labelIVA}) {
+        for (JLabel etiqueta : new JLabel[] {labelSubtotal, labelDescuento, labelIVA}) {
             etiqueta.setForeground(TEXTO_CLARO);
             etiqueta.setFont(new Font("SansSerif", Font.PLAIN, 14));
         }
-        for (JLabel valor : new JLabel[] {valorSubtotalCarrito, valorIVACarrito}) {
+        for (JLabel valor : new JLabel[] {valorSubtotalCarrito, valorDescuentoCarrito, valorIVACarrito}) {
             valor.setForeground(TEXTO);
             valor.setFont(new Font("SansSerif", Font.PLAIN, 14));
         }
@@ -896,11 +926,15 @@ public class VentanaUsuario extends JFrame {
         labelTotal.setFont(new Font("SansSerif", Font.BOLD, 20));
         resumen.add(labelSubtotal);
         resumen.add(valorSubtotalCarrito);
+        resumen.add(labelDescuento);
+        resumen.add(valorDescuentoCarrito);
         resumen.add(labelIVA);
         resumen.add(valorIVACarrito);
         resumen.add(labelTotalTexto);
         resumen.add(labelTotal);
-        inferior.add(resumen, BorderLayout.CENTER);
+        detalleCompra.add(seccionCupon, BorderLayout.NORTH);
+        detalleCompra.add(resumen, BorderLayout.CENTER);
+        inferior.add(detalleCompra, BorderLayout.CENTER);
 
         JPanel pie = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         pie.setBackground(FONDO);
@@ -917,6 +951,7 @@ public class VentanaUsuario extends JFrame {
                 return;
             }
             carrito.vaciarCarrito();
+            campoCupon.setText("");
             actualizarVista();
         });
         pie.add(botonVaciarCarrito);
@@ -1021,8 +1056,31 @@ public class VentanaUsuario extends JFrame {
 
         String rutCliente = usuario == null ? "" : usuario.getRut();
 
-        // extrae los datos
+        GestorCupones gestorCupones = null;
+        Cupon cuponCompra = carrito.getCupon();
+        if (cuponCompra != null) {
+            try {
+                gestorCupones = new GestorCupones();
+                cuponCompra = gestorCupones.buscar(cuponCompra.getCodigo());
+                String motivo = cuponCompra == null ? "El cupón ya no está disponible."
+                        : carrito.aplicarCupon(cuponCompra);
+                if (motivo != null) {
+                    quitarCupon();
+                    JOptionPane.showMessageDialog(ventanaActiva(), motivo, "Cupón no disponible",
+                            JOptionPane.WARNING_MESSAGE);
+                    return;
+                }
+            } catch (IOException ex) {
+                JOptionPane.showMessageDialog(ventanaActiva(),
+                        "No se pudieron cargar los cupones: " + ex.getMessage(),
+                        "Error al cargar cupones", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+        }
+
         double subtotal = carrito.calcularSubtotalCarrito();
+        double descuento = carrito.calcularDescuento();
+        double subtotalNeto = carrito.calcularSubtotalNeto();
         double iva = carrito.calcularIVA();
         double total = carrito.calcularTotal();
 
@@ -1031,6 +1089,10 @@ public class VentanaUsuario extends JFrame {
         for (Producto p : carrito.getProductos()) {
             int cant = carrito.getCantidad(p.getId());
             detalles.append(cant).append("x ").append(p.getNombre()).append(" | ");
+        }
+        if (cuponCompra != null) {
+            detalles.append("Cupón ").append(cuponCompra.getCodigo()).append(" (-")
+                    .append(formatearPrecio(descuento)).append(") | ");
         }
 
         // crea el gestor y genera una nueva venta 
@@ -1046,22 +1108,12 @@ public class VentanaUsuario extends JFrame {
             nombreCompleto,
             usuario == null ? "" : usuario.getCorreo(),
             detalles.toString(),
-            subtotal,
+            subtotalNeto,
             iva,
             total
         );
 
-        // procesa la compra en el sistema 
-        boolean compraExitosa = carrito.finalizarCompra();
-
-        if (!compraExitosa) {
-            JOptionPane.showMessageDialog(ventanaActiva(), "No hay stock suficiente para completar la compra.",
-                    "Compra fallida",
-                    JOptionPane.ERROR_MESSAGE);
-            return;
-        }
-        // guarda la venta y el inventario actualizados
-        // guarda la venta y el inventario actualizados 
+        // Guarda la venta antes de consumir el cupón para no descontar usos si falla el registro.
         try {
             if (usuario == null) {
                 numeroTicket = gestorVentas.guardarVentaInvitado(nuevaVenta);
@@ -1073,7 +1125,19 @@ public class VentanaUsuario extends JFrame {
                     "Error al guardar la venta", JOptionPane.ERROR_MESSAGE);
             return;
         }
+        if (cuponCompra != null) {
+            try {
+                gestorCupones.registrarUso(cuponCompra.getCodigo());
+            } catch (IOException ex) {
+                JOptionPane.showMessageDialog(ventanaActiva(),
+                        "La compra quedó registrada, pero no se pudo actualizar el uso del cupón: "
+                                + ex.getMessage(),
+                        "Error al actualizar cupón", JOptionPane.ERROR_MESSAGE);
+            }
+        }
+        carrito.finalizarCompra();
         inventario.guardarEnArchivo();
+        campoCupon.setText("");
         
         JOptionPane.showMessageDialog(ventanaActiva(), "Tu ticket de venta es el número: " + numeroTicket,
                 "Ticket de venta",
@@ -1125,8 +1189,9 @@ public class VentanaUsuario extends JFrame {
             }
         }
 
-        if (valorSubtotalCarrito != null && valorIVACarrito != null) {
+        if (valorSubtotalCarrito != null && valorDescuentoCarrito != null && valorIVACarrito != null) {
             valorSubtotalCarrito.setText(formatearPrecio(carrito.calcularSubtotalCarrito()));
+            valorDescuentoCarrito.setText(formatearPrecio(carrito.calcularDescuento()));
             valorIVACarrito.setText(formatearPrecio(carrito.calcularIVA()));
         }
         if (labelTotal != null) {
@@ -1136,6 +1201,45 @@ public class VentanaUsuario extends JFrame {
             tarjetasCarrito.show(contenidoCarrito,
                     carrito.getProductos().isEmpty() ? "vacio" : "productos");
         }
+    }
+
+    private void aplicarCupon() {
+        if (carrito.getProductos().isEmpty()) {
+            JOptionPane.showMessageDialog(ventanaActiva(), "Agrega productos antes de aplicar un cupón.",
+                    "Carrito vacío", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        try {
+            String codigo = campoCupon.getText().trim();
+            Cupon cupon = new GestorCupones().buscar(codigo);
+            String motivo = carrito.aplicarCupon(cupon);
+            if (motivo != null) {
+                Cupon cuponActual = carrito.getCupon();
+                campoCupon.setText(cuponActual == null ? "" : cuponActual.getCodigo());
+                JOptionPane.showMessageDialog(ventanaActiva(), motivo, "Cupón no disponible",
+                        JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+
+            campoCupon.setText(cupon.getCodigo());
+            actualizarVista();
+            JOptionPane.showMessageDialog(ventanaActiva(),
+                    "Cupón aplicado. Ahorras "
+                            + formatearPrecio(carrito.calcularDescuento()) + ".",
+                    "Descuento aplicado", JOptionPane.INFORMATION_MESSAGE);
+        } catch (IOException ex) {
+            JOptionPane.showMessageDialog(ventanaActiva(), "No se pudieron cargar los cupones: " + ex.getMessage(),
+                    "Error al cargar cupones", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void quitarCupon() {
+        carrito.quitarCupon();
+        if (campoCupon != null) {
+            campoCupon.setText("");
+        }
+        actualizarVista();
     }
 
 

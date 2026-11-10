@@ -11,9 +11,13 @@ import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.io.File;
 import java.io.IOException;
+import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import javax.imageio.ImageIO;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
+import javax.swing.JComboBox;
+import javax.swing.JComponent;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
@@ -57,6 +61,7 @@ public class VentanaAdmin extends JFrame {
     private final CardLayout disenoVistas;
     private final JPanel panelVistas;
     private final DefaultTableModel modeloVentas;
+    private final DefaultTableModel modeloCupones;
 
     public VentanaAdmin() {
         inventario = new Inventario();
@@ -146,16 +151,54 @@ public class VentanaAdmin extends JFrame {
         panelVentas.setBackground(FONDO);
         panelVentas.add(scrollVentas, BorderLayout.CENTER);
 
+        modeloCupones = new DefaultTableModel(
+                new Object[] { "Código", "Tipo", "Descuento", "Vencimiento", "Usos realizados / máximos" }, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+        };
+        JTable tablaCupones = new JTable(modeloCupones);
+        tablaCupones.setAutoCreateRowSorter(true);
+        tablaCupones.setRowHeight(28);
+        tablaCupones.getTableHeader().setFont(new Font(Font.SANS_SERIF, Font.BOLD, 14));
+        tablaCupones.getTableHeader().setBackground(AZUL_MARINO);
+        tablaCupones.getTableHeader().setForeground(MARFIL);
+        tablaCupones.setBackground(SUPERFICIE);
+        tablaCupones.setForeground(TEXTO_CLARO);
+        tablaCupones.setSelectionBackground(DORADO);
+        tablaCupones.setSelectionForeground(TEXTO);
+        tablaCupones.setGridColor(AZUL);
+        JScrollPane scrollCupones = new JScrollPane(tablaCupones);
+        scrollCupones.getViewport().setBackground(SUPERFICIE);
+        JButton btnNuevoCupon = new JButton("Agregar cupón");
+        estilizarBotonStock(btnNuevoCupon);
+        btnNuevoCupon.addActionListener(e -> agregarCupon());
+        JPanel encabezadoCupones = new JPanel(new BorderLayout());
+        encabezadoCupones.setBackground(FONDO);
+        JLabel tituloCupones = new JLabel("Cupones disponibles para clientes");
+        tituloCupones.setFont(new Font("SansSerif", Font.BOLD, 18));
+        tituloCupones.setForeground(TEXTO);
+        encabezadoCupones.add(tituloCupones, BorderLayout.WEST);
+        encabezadoCupones.add(btnNuevoCupon, BorderLayout.EAST);
+        JPanel panelCupones = new JPanel(new BorderLayout(12, 12));
+        panelCupones.setBackground(FONDO);
+        panelCupones.setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
+        panelCupones.add(encabezadoCupones, BorderLayout.NORTH);
+        panelCupones.add(scrollCupones, BorderLayout.CENTER);
+
         disenoVistas = new CardLayout();
         panelVistas = new JPanel(disenoVistas);
         panelVistas.add(panelStock, "stock");
         panelVistas.add(panelVentas, "ventas");
+        panelVistas.add(panelCupones, "cupones");
 
         JLabel tituloAdmin = new JLabel("Admin");
         tituloAdmin.setFont(new Font("SansSerif", Font.BOLD, 20));
         tituloAdmin.setForeground(MARFIL);
         JButton btnStock = new JButton("Stock");
         JButton btnVentas = new JButton("Ventas");
+        JButton btnCupones = new JButton("Cupones");
 
         JPanel barraNavegacion = new JPanel(new BorderLayout(16, 0));
         barraNavegacion.setBorder(BorderFactory.createCompoundBorder(
@@ -164,10 +207,12 @@ public class VentanaAdmin extends JFrame {
         barraNavegacion.setBackground(AZUL_MARINO);
         estilizarBotonStock(btnStock);
         estilizarBotonStock(btnVentas);
+        estilizarBotonStock(btnCupones);
         JPanel accionesNavegacion = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         accionesNavegacion.setBackground(AZUL_MARINO);
         accionesNavegacion.add(btnStock);
         accionesNavegacion.add(btnVentas);
+        accionesNavegacion.add(btnCupones);
         barraNavegacion.add(tituloAdmin, BorderLayout.WEST);
         barraNavegacion.add(accionesNavegacion, BorderLayout.EAST);
         btnStock.addActionListener(e -> {
@@ -176,6 +221,7 @@ public class VentanaAdmin extends JFrame {
             disenoVistas.show(panelVistas, "stock");
         });
         btnVentas.addActionListener(e -> mostrarVentas());
+        btnCupones.addActionListener(e -> mostrarCupones());
         add(barraNavegacion, BorderLayout.NORTH);
         add(panelVistas, BorderLayout.CENTER);
 
@@ -259,6 +305,89 @@ public class VentanaAdmin extends JFrame {
         disenoVistas.show(panelVistas, "ventas");
     }
 
+    private void mostrarCupones() {
+        try {
+            modeloCupones.setRowCount(0);
+            for (Cupon cupon : new GestorCupones().getCupones()) {
+                String descuento = cupon.getTipo().equals(Cupon.PORCENTAJE)
+                        ? cupon.getValor() + "%" : "$" + cupon.getValor();
+                modeloCupones.addRow(new Object[] {
+                        cupon.getCodigo(), cupon.getTipo(), descuento, cupon.getFechaVencimiento(),
+                        cupon.getUsosRealizados() + " / " + cupon.getUsosMaximos()
+                });
+            }
+            disenoVistas.show(panelVistas, "cupones");
+        } catch (IOException ex) {
+            JOptionPane.showMessageDialog(this, "No se pudieron cargar los cupones: " + ex.getMessage(),
+                    "Error al cargar cupones", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void agregarCupon() {
+        JTextField campoCodigo = new JTextField();
+        JComboBox<String> campoTipo = new JComboBox<>(new String[] { "Porcentaje (%)", "Monto fijo ($)" });
+        JTextField campoDescuento = new JTextField();
+        JTextField campoVencimiento = new JTextField(LocalDate.now().plusMonths(1).toString());
+        JTextField campoUsos = new JTextField("100");
+        JPanel formulario = new JPanel(new GridBagLayout());
+        formulario.setBackground(FONDO);
+        agregarCampo(formulario, "Código:", campoCodigo, 0);
+        agregarCampo(formulario, "Tipo de descuento:", campoTipo, 1);
+        agregarCampo(formulario, "Descuento:", campoDescuento, 2);
+        agregarCampo(formulario, "Vencimiento (AAAA-MM-DD):", campoVencimiento, 3);
+        agregarCampo(formulario, "Usos máximos:", campoUsos, 4);
+
+        int resultado = JOptionPane.showConfirmDialog(this, formulario, "Crear cupón",
+                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+        if (resultado != JOptionPane.OK_OPTION) {
+            return;
+        }
+
+        String codigo = campoCodigo.getText().trim();
+        try {
+            if (!codigo.matches("[A-Za-z0-9_-]+")) {
+                throw new IllegalArgumentException(
+                        "El código solo puede contener letras, números, guiones y guiones bajos.");
+            }
+            String tipo = campoTipo.getSelectedIndex() == 0 ? Cupon.PORCENTAJE : Cupon.MONTO;
+            double valor = Double.parseDouble(campoDescuento.getText().trim());
+            if (!Double.isFinite(valor) || valor <= 0
+                    || (tipo.equals(Cupon.PORCENTAJE) && valor > 100)) {
+                throw new IllegalArgumentException(tipo.equals(Cupon.PORCENTAJE)
+                        ? "El porcentaje debe ser mayor que 0 y no superar el 100."
+                        : "El monto del descuento debe ser mayor que 0.");
+            }
+            LocalDate vencimiento = LocalDate.parse(campoVencimiento.getText().trim());
+            if (vencimiento.isBefore(LocalDate.now())) {
+                throw new IllegalArgumentException("La fecha de vencimiento no puede estar en el pasado.");
+            }
+            int usosMaximos = Integer.parseInt(campoUsos.getText().trim());
+            if (usosMaximos <= 0) {
+                throw new IllegalArgumentException("Los usos máximos deben ser mayores que 0.");
+            }
+
+            Cupon cupon = new Cupon(codigo, tipo, valor, vencimiento, usosMaximos, 0);
+            if (!new GestorCupones().agregar(cupon)) {
+                JOptionPane.showMessageDialog(this, "Ya existe un cupón con ese código.",
+                        "Código duplicado", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+            mostrarCupones();
+            JOptionPane.showMessageDialog(this, "El cupón " + cupon.getCodigo() + " quedó disponible para los clientes.",
+                    "Cupón creado", JOptionPane.INFORMATION_MESSAGE);
+        } catch (NumberFormatException | DateTimeParseException ex) {
+            JOptionPane.showMessageDialog(this,
+                    "Ingresa un descuento numérico, una fecha válida (AAAA-MM-DD) y un límite de usos entero.",
+                    "Datos inválidos", JOptionPane.WARNING_MESSAGE);
+        } catch (IllegalArgumentException ex) {
+            JOptionPane.showMessageDialog(this, ex.getMessage(), "Datos inválidos",
+                    JOptionPane.WARNING_MESSAGE);
+        } catch (IOException ex) {
+            JOptionPane.showMessageDialog(this, "No se pudo guardar el cupón: " + ex.getMessage(),
+                    "Error al guardar cupón", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
     private void estilizarBotonStock(JButton boton) {
         boton.setFont(new Font("SansSerif", Font.BOLD, 12));
         boton.setFocusPainted(false);
@@ -267,7 +396,7 @@ public class VentanaAdmin extends JFrame {
         boton.setBorder(BorderFactory.createEmptyBorder(8, 14, 8, 14));
     }
 
-    private void agregarCampo(JPanel panel, String etiqueta, JTextField campo, int fila) {
+    private void agregarCampo(JPanel panel, String etiqueta, JComponent campo, int fila) {
         GridBagConstraints restricciones = new GridBagConstraints();
         restricciones.gridx = 0;
         restricciones.gridy = fila;
@@ -278,7 +407,9 @@ public class VentanaAdmin extends JFrame {
         campo.setFont(campo.getFont().deriveFont(Font.BOLD));
         campo.setBackground(SUPERFICIE);
         campo.setForeground(TEXTO_CLARO);
-        campo.setCaretColor(TEXTO_CLARO);
+        if (campo instanceof JTextField) {
+            ((JTextField) campo).setCaretColor(TEXTO_CLARO);
+        }
         panel.add(etiquetaComponente, restricciones);
 
         restricciones.gridx = 1;
