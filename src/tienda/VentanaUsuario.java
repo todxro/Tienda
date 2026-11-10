@@ -155,6 +155,7 @@ public class VentanaUsuario extends JFrame {
 
         iniciar.addActionListener(e -> {
             Usuario autenticado = gestorUsuarios.autenticar(campoCorreo.getText().trim(),
+
                     new String(campoContrasenia.getPassword()));
             if (autenticado == null) {
                 JOptionPane.showMessageDialog(this, "Correo o contraseña incorrectos.",
@@ -162,6 +163,7 @@ public class VentanaUsuario extends JFrame {
                 return;
             }
             usuario = autenticado;
+            GestorIntereses.cargarDeseos(usuario);
             mostrarCatalogo();
         });
         crearCuenta.addActionListener(e -> mostrarRegistro(campoCorreo, campoContrasenia));
@@ -317,6 +319,10 @@ public class VentanaUsuario extends JFrame {
         estilizarBoton(btnCuenta, DORADO, TEXTO);
         btnCuenta.addActionListener(e -> mostrarCuenta());
         busqueda.add(btnCuenta);
+        JButton btnDeseos = new JButton("★ Lista de Deseos");
+        estilizarBoton(btnDeseos, DORADO, TEXTO);
+        btnDeseos.addActionListener(e -> mostrarVentanaDeseos());
+        busqueda.add(btnDeseos);
 
         if (usuario == null) {
             JButton btnIniciarSesion = new JButton("Iniciar sesión");
@@ -756,13 +762,50 @@ public class VentanaUsuario extends JFrame {
         datos.add(precio);
         datos.add(stock);
 
-        JButton btnAgregar = new JButton("Agregar al carrito");
-        estilizarBoton(btnAgregar, AMARILLO, TEXTO);
-        btnAgregar.addActionListener(e -> agregarAlCarrito(producto));
+     JPanel panelAccionesTarjeta = new JPanel(new GridLayout(2, 1, 4, 4));
+        panelAccionesTarjeta.setOpaque(false);
+
+        if (producto.getStock() > 0) {
+            JButton btnAgregar = new JButton("Agregar al carrito");
+            estilizarBoton(btnAgregar, AMARILLO, TEXTO);
+            btnAgregar.addActionListener(e -> agregarAlCarrito(producto));
+            panelAccionesTarjeta.add(btnAgregar);
+        } else {
+            JButton btnAvisar = new JButton("Avísame cuando llegue");
+            estilizarBoton(btnAvisar, NARANJA, MARFIL);
+            btnAvisar.addActionListener(e -> {
+                if (usuario == null) {
+                    JOptionPane.showMessageDialog(this, "Inicia sesión para suscribirte a reposiciones.");
+                    return;
+                }
+                GestorIntereses.agregarRegistro("suscripciones.csv", usuario.getCorreo(), producto.getId());
+                JOptionPane.showMessageDialog(this, "Te avisaremos apenas repongamos stock de " + producto.getNombre());
+            });
+            panelAccionesTarjeta.add(btnAvisar);
+        }
+
+        boolean esFavorito = usuario != null && usuario.getListaDeseos().contains(producto.getId());
+        JButton btnFavorito = new JButton(esFavorito ? "★ En Deseos" : "☆ Favorito");
+        estilizarBoton(btnFavorito, SUPERFICIE, TEXTO);
+        btnFavorito.addActionListener(e -> {
+            if (usuario == null) {
+                JOptionPane.showMessageDialog(this, "Inicia sesión para guardar productos en tu lista de deseos.");
+                return;
+            }
+            if (usuario.getListaDeseos().contains(producto.getId())) {
+                usuario.quitarDeseo(producto.getId());
+                GestorIntereses.eliminarRegistro("deseos.csv", usuario.getCorreo(), producto.getId());
+            } else {
+                usuario.agregarDeseo(producto.getId());
+                GestorIntereses.agregarRegistro("deseos.csv", usuario.getCorreo(), producto.getId());
+            }
+            actualizarVista();
+        });
+        panelAccionesTarjeta.add(btnFavorito);
 
         tarjeta.add(crearImagen(producto.getId()), BorderLayout.NORTH);
         tarjeta.add(datos, BorderLayout.CENTER);
-        tarjeta.add(btnAgregar, BorderLayout.SOUTH);
+        tarjeta.add(panelAccionesTarjeta, BorderLayout.SOUTH);
         return tarjeta;
     }
 
@@ -1232,7 +1275,59 @@ public class VentanaUsuario extends JFrame {
                     carrito.getProductos().isEmpty() ? "vacio" : "productos");
         }
     }
+    private void mostrarVentanaDeseos() {
+        if (usuario == null) {
+            JOptionPane.showMessageDialog(this, "Inicia sesión para ver tu lista de deseos.");
+            return;
+        }
 
+        JDialog ventanaDeseos = new JDialog(this, "Lista de Deseos", true);
+        ventanaDeseos.setSize(500, 400);
+        ventanaDeseos.setLocationRelativeTo(this);
+        ventanaDeseos.setLayout(new BorderLayout(10, 10));
+
+        DefaultTableModel modeloDeseos = new DefaultTableModel(new Object[]{"ID", "Producto", "Precio", "Stock"}, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) { return false; }
+        };
+        JTable tablaDeseos = new JTable(modeloDeseos);
+
+        for (String idProd : usuario.getListaDeseos()) {
+            Producto p = inventario.buscarProducto(idProd);
+            if (p != null) {
+                modeloDeseos.addRow(new Object[]{p.getId(), p.getNombre(), "$" + p.getPrecio(), p.getStock()});
+            }
+        }
+
+        JButton btnMoverCarrito = new JButton("Mover al carrito");
+        estilizarBoton(btnMoverCarrito, AMARILLO, TEXTO);
+        btnMoverCarrito.addActionListener(e -> {
+            int fila = tablaDeseos.getSelectedRow();
+            if (fila < 0) {
+                JOptionPane.showMessageDialog(ventanaDeseos, "Selecciona un producto de la lista.");
+                return;
+            }
+            String idProd = modeloDeseos.getValueAt(fila, 0).toString();
+            Producto p = inventario.buscarProducto(idProd);
+            if (p != null) {
+                if (p.getStock() <= 0) {
+                    JOptionPane.showMessageDialog(ventanaDeseos, "Este producto no tiene stock disponible.");
+                    return;
+                }
+                agregarAlCarrito(p);
+                usuario.quitarDeseo(idProd);
+                GestorIntereses.eliminarRegistro("deseos.csv", usuario.getCorreo(), idProd);
+                ventanaDeseos.dispose();
+                mostrarVentanaDeseos();
+            }
+        });
+
+        ventanaDeseos.add(new JScrollPane(tablaDeseos), BorderLayout.CENTER);
+        JPanel panelBajo = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        panelBajo.add(btnMoverCarrito);
+        ventanaDeseos.add(panelBajo, BorderLayout.SOUTH);
+        ventanaDeseos.setVisible(true);
+    }
 
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> new VentanaUsuario().setVisible(true));
