@@ -3,30 +3,42 @@ package tienda;
 import java.awt.BorderLayout;
 import java.awt.CardLayout;
 import java.awt.Color;
+import java.awt.Component;
+import java.awt.Container;
+import java.awt.Cursor;
 import java.awt.Dimension;
-import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
+import java.awt.GridLayout;
+import java.awt.Image;
 import java.awt.Insets;
+import java.awt.Rectangle;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.io.File;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import javax.imageio.ImageIO;
 import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
+import javax.swing.ImageIcon;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.Scrollable;
 import javax.swing.JTable;
 import javax.swing.JTextField;
-import javax.swing.ListSelectionModel;
 import javax.swing.SwingUtilities;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.table.DefaultTableModel;
@@ -42,18 +54,18 @@ import javax.swing.table.DefaultTableModel;
 //   mostrarSeleccion (684), mostrarDatosInvalidos (689)
 // - Inicio de la aplicación: main (695)
 public class VentanaAdmin extends JFrame {
-    private static final Color AZUL = new Color(34, 96, 176);
-    private static final Color AZUL_MARINO = new Color(18, 67, 121);
-    private static final Color AMARILLO = new Color(250, 204, 76);
+    private static final Color AZUL = new Color(50, 116, 174);
+    private static final Color AZUL_MARINO = new Color(22, 50, 78);
+    private static final Color AMARILLO = new Color(242, 184, 75);
     private static final Color DORADO = AMARILLO;
-    private static final Color FONDO = new Color(232, 217, 195);
-    private static final Color SUPERFICIE = new Color(217, 197, 168);
-    private static final Color TEXTO = new Color(25, 52, 76);
-    private static final Color TEXTO_CLARO = new Color(72, 98, 126);
-    private static final Color MARFIL = new Color(246, 233, 207);
+    private static final Color FONDO = new Color(241, 244, 248);
+    private static final Color SUPERFICIE = Color.WHITE;
+    private static final Color TEXTO = new Color(31, 41, 55);
+    private static final Color TEXTO_CLARO = new Color(82, 101, 121);
+    private static final Color MARFIL = Color.WHITE;
     private final Inventario inventario;
-    private final DefaultTableModel modeloTabla;
-    private final JTable tablaProductos;
+    private final JPanel panelTarjetasProductos;
+    private String productoSeleccionadoId;
     private final JTextField txtNombre;
     private final JTextField txtPrecio;
     private final JTextField txtCantidad;
@@ -70,26 +82,11 @@ public class VentanaAdmin extends JFrame {
         getContentPane().setBackground(FONDO);
         setLayout(new BorderLayout(14, 14));
 
-        // La tabla principal muestra el inventario sin permitir editar celdas directamente.
-        modeloTabla = new DefaultTableModel(
-                new Object[] { "ID", "Producto", "Precio", "Stock", "Categoría", "Imagen" }, 0) {
-            @Override
-            public boolean isCellEditable(int row, int column) {
-                return false;
-            }
-        };
-        tablaProductos = new JTable(modeloTabla);
-        tablaProductos.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        tablaProductos.setAutoCreateRowSorter(true);
-        tablaProductos.setRowHeight(28);
-        tablaProductos.getTableHeader().setFont(new Font(Font.SANS_SERIF, Font.BOLD, 14));
-        tablaProductos.getTableHeader().setBackground(AZUL_MARINO);
-        tablaProductos.getTableHeader().setForeground(MARFIL);
-        tablaProductos.setBackground(SUPERFICIE);
-        tablaProductos.setForeground(TEXTO_CLARO);
-        tablaProductos.setSelectionBackground(DORADO);
-        tablaProductos.setSelectionForeground(TEXTO);
-        tablaProductos.setGridColor(AZUL);
+        // El inventario se presenta en tarjetas para mostrar las fotos de los productos.
+        panelTarjetasProductos = new PanelTarjetasProductos();
+        panelTarjetasProductos.setLayout(new GridLayout(0, 3, 14, 14));
+        panelTarjetasProductos.setBackground(FONDO);
+        panelTarjetasProductos.setBorder(BorderFactory.createEmptyBorder(4, 4, 4, 4));
 
         txtNombre = new JTextField();
         txtPrecio = new JTextField();
@@ -98,7 +95,7 @@ public class VentanaAdmin extends JFrame {
 
         // Formulario lateral para agregar, editar, borrar y consultar productos.
         JPanel panelControles = new JPanel(new GridBagLayout());
-        panelControles.setBackground(FONDO);
+        panelControles.setBackground(SUPERFICIE);
         panelControles.setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
         panelControles.setPreferredSize(new Dimension(265, 0));
         agregarCampo(panelControles, "Nombre:", txtNombre, 0);
@@ -120,8 +117,19 @@ public class VentanaAdmin extends JFrame {
 
         JPanel panelStock = new JPanel(new BorderLayout(12, 12));
         panelStock.setBackground(FONDO);
-        JScrollPane scrollProductos = new JScrollPane(tablaProductos);
-        scrollProductos.getViewport().setBackground(SUPERFICIE);
+        panelStock.setBorder(BorderFactory.createEmptyBorder(16, 16, 16, 16));
+        JScrollPane scrollProductos = new JScrollPane(panelTarjetasProductos);
+        scrollProductos.setBorder(BorderFactory.createEmptyBorder());
+        scrollProductos.getViewport().setBackground(FONDO);
+        scrollProductos.getVerticalScrollBar().setUnitIncrement(16);
+        scrollProductos.getViewport().addComponentListener(new ComponentAdapter() {
+            @Override
+            public void componentResized(ComponentEvent e) {
+                actualizarColumnasTarjetas(scrollProductos.getViewport().getExtentSize().width);
+            }
+        });
+        panelStock.add(crearEncabezado("Inventario", "Administra productos, precios y existencias."),
+            BorderLayout.NORTH);
         panelStock.add(scrollProductos, BorderLayout.CENTER);
         panelStock.add(panelControles, BorderLayout.WEST);
 
@@ -147,8 +155,11 @@ public class VentanaAdmin extends JFrame {
         tablaVentas.setGridColor(AZUL);
         JScrollPane scrollVentas = new JScrollPane(tablaVentas);
         scrollVentas.getViewport().setBackground(SUPERFICIE);
-        JPanel panelVentas = new JPanel(new BorderLayout());
+        JPanel panelVentas = new JPanel(new BorderLayout(12, 12));
         panelVentas.setBackground(FONDO);
+        panelVentas.setBorder(BorderFactory.createEmptyBorder(16, 16, 16, 16));
+        panelVentas.add(crearEncabezado("Ventas", "Consulta el historial de ventas de la tienda."),
+            BorderLayout.NORTH);
         panelVentas.add(scrollVentas, BorderLayout.CENTER);
 
         modeloCupones = new DefaultTableModel(
@@ -193,53 +204,55 @@ public class VentanaAdmin extends JFrame {
         panelVistas.add(panelVentas, "ventas");
         panelVistas.add(panelCupones, "cupones");
 
-        JLabel tituloAdmin = new JLabel("Admin");
-        tituloAdmin.setFont(new Font("SansSerif", Font.BOLD, 20));
+        JLabel tituloAdmin = new JLabel("<html>TIENDA<br><b>ADMINISTRACIÓN</b></html>");
+        tituloAdmin.setFont(new Font("SansSerif", Font.PLAIN, 18));
         tituloAdmin.setForeground(MARFIL);
+        tituloAdmin.setBorder(BorderFactory.createEmptyBorder(8, 4, 20, 4));
         JButton btnStock = new JButton("Stock");
         JButton btnVentas = new JButton("Ventas");
         JButton btnCupones = new JButton("Cupones");
 
-        JPanel barraNavegacion = new JPanel(new BorderLayout(16, 0));
-        barraNavegacion.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(AZUL_MARINO),
-                BorderFactory.createEmptyBorder(8, 12, 8, 12)));
+        JPanel barraNavegacion = new JPanel(new BorderLayout(0, 18));
+        barraNavegacion.setPreferredSize(new Dimension(205, 0));
+        barraNavegacion.setBorder(BorderFactory.createEmptyBorder(18, 14, 18, 14));
         barraNavegacion.setBackground(AZUL_MARINO);
-        estilizarBotonStock(btnStock);
-        estilizarBotonStock(btnVentas);
-        estilizarBotonStock(btnCupones);
-        JPanel accionesNavegacion = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        estilizarBotonNavegacion(btnStock);
+        estilizarBotonNavegacion(btnVentas);
+        estilizarBotonNavegacion(btnCupones);
+        JPanel accionesNavegacion = new JPanel();
+        accionesNavegacion.setLayout(new BoxLayout(accionesNavegacion, BoxLayout.Y_AXIS));
         accionesNavegacion.setBackground(AZUL_MARINO);
         accionesNavegacion.add(btnStock);
+        accionesNavegacion.add(Box.createVerticalStrut(8));
         accionesNavegacion.add(btnVentas);
+        accionesNavegacion.add(Box.createVerticalStrut(8));
         accionesNavegacion.add(btnCupones);
-        barraNavegacion.add(tituloAdmin, BorderLayout.WEST);
-        barraNavegacion.add(accionesNavegacion, BorderLayout.EAST);
+        barraNavegacion.add(tituloAdmin, BorderLayout.NORTH);
+        barraNavegacion.add(accionesNavegacion, BorderLayout.CENTER);
         btnStock.addActionListener(e -> {
             inventario.recargarDesdeArchivo();
-            refrescarTabla();
+            refrescarTarjetas();
             disenoVistas.show(panelVistas, "stock");
         });
         btnVentas.addActionListener(e -> mostrarVentas());
         btnCupones.addActionListener(e -> mostrarCupones());
-        add(barraNavegacion, BorderLayout.NORTH);
+        add(barraNavegacion, BorderLayout.WEST);
         add(panelVistas, BorderLayout.CENTER);
 
-        tablaProductos.getSelectionModel().addListSelectionListener(e -> cargarSeleccion());
         btnAgregar.addActionListener(e -> agregarProducto());
         btnActualizar.addActionListener(e -> actualizarProducto());
         btnBorrar.addActionListener(e -> borrarProducto());
         btnValorTotal.addActionListener(e -> JOptionPane.showMessageDialog(this,
                 "Valor total del inventario: $" + inventario.calcularValorTotalInventario()));
 
-        refrescarTabla();
+        refrescarTarjetas();
         setExtendedState(JFrame.MAXIMIZED_BOTH);
     }
 
     private void seleccionarImagenProducto() {
         String id = idSeleccionado();
         if (id == null) {
-            JOptionPane.showMessageDialog(this, "Selecciona un producto en la tabla.",
+            JOptionPane.showMessageDialog(this, "Selecciona una tarjeta de producto.",
                     "Falta selección", JOptionPane.WARNING_MESSAGE);
             return;
         }
@@ -276,7 +289,7 @@ public class VentanaAdmin extends JFrame {
                 throw new IOException("No se pudo guardar la imagen en formato PNG.");
             }
 
-            refrescarTabla();
+            refrescarTarjetas();
             JOptionPane.showMessageDialog(this, "Imagen guardada para el producto " + id + ".",
                     "Imagen cargada", JOptionPane.INFORMATION_MESSAGE);
         } catch (IOException ex) {
@@ -388,12 +401,43 @@ public class VentanaAdmin extends JFrame {
         }
     }
 
+    private JPanel crearEncabezado(String titulo, String descripcion) {
+        JPanel encabezado = new JPanel(new BorderLayout(0, 4));
+        encabezado.setBackground(FONDO);
+
+        JLabel etiquetaTitulo = new JLabel(titulo);
+        etiquetaTitulo.setFont(new Font("SansSerif", Font.BOLD, 22));
+        etiquetaTitulo.setForeground(TEXTO);
+
+        JLabel etiquetaDescripcion = new JLabel(descripcion);
+        etiquetaDescripcion.setFont(new Font("SansSerif", Font.PLAIN, 13));
+        etiquetaDescripcion.setForeground(TEXTO_CLARO);
+
+        encabezado.add(etiquetaTitulo, BorderLayout.NORTH);
+        encabezado.add(etiquetaDescripcion, BorderLayout.CENTER);
+        return encabezado;
+    }
+
     private void estilizarBotonStock(JButton boton) {
         boton.setFont(new Font("SansSerif", Font.BOLD, 12));
         boton.setFocusPainted(false);
         boton.setBackground(DORADO);
         boton.setForeground(TEXTO);
         boton.setBorder(BorderFactory.createEmptyBorder(8, 14, 8, 14));
+    }
+
+    private void estilizarBotonNavegacion(JButton boton) {
+        boton.setFont(new Font("SansSerif", Font.BOLD, 13));
+        boton.setFocusPainted(false);
+        boton.setOpaque(true);
+        boton.setBackground(new Color(33, 70, 105));
+        boton.setForeground(MARFIL);
+        boton.setHorizontalAlignment(JButton.LEFT);
+        boton.setBorder(BorderFactory.createEmptyBorder(8, 12, 8, 12));
+        boton.setPreferredSize(new Dimension(177, 38));
+        boton.setMaximumSize(new Dimension(177, 38));
+        boton.setAlignmentX(JButton.LEFT_ALIGNMENT);
+        boton.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
     }
 
     private void agregarCampo(JPanel panel, String etiqueta, JComponent campo, int fila) {
@@ -492,40 +536,167 @@ public class VentanaAdmin extends JFrame {
     }
 
     private String idSeleccionado() {
-        int fila = tablaProductos.getSelectedRow();
-        if (fila < 0) {
-            return null;
-        }
-        int filaModelo = tablaProductos.convertRowIndexToModel(fila);
-        return modeloTabla.getValueAt(filaModelo, 0).toString();
+        return productoSeleccionadoId;
     }
 
-    private void cargarSeleccion() {
-        // Copia a los campos del formulario los datos de la fila seleccionada.
-        String id = idSeleccionado();
-        if (id == null) {
-            return;
-        }
-        Producto producto = inventario.buscarProducto(id);
-        if (producto != null) {
-            txtNombre.setText(producto.getNombre());
-            txtPrecio.setText(String.valueOf(producto.getPrecio()));
-            txtCantidad.setText(String.valueOf(producto.getStock()));
-            txtCategoria.setText(producto.getCategoria());
-        }
+    private void cargarSeleccion(Producto producto) {
+        productoSeleccionadoId = producto.getId();
+        txtNombre.setText(producto.getNombre());
+        txtPrecio.setText(String.valueOf(producto.getPrecio()));
+        txtCantidad.setText(String.valueOf(producto.getStock()));
+        txtCategoria.setText(producto.getCategoria());
+        actualizarEstiloSeleccionTarjetas();
     }
 
     public void actualizarVista() {
-        refrescarTabla();
+        refrescarTarjetas();
     }
 
-    private void refrescarTabla() {
-        // Vuelve a construir las filas visibles usando la lista actual del inventario.
-        modeloTabla.setRowCount(0);
+    private void refrescarTarjetas() {
+        panelTarjetasProductos.removeAll();
+        boolean seleccionSigueExistiendo = false;
         for (Producto producto : inventario.getListaProductos()) {
-            File imagen = new File("imagenes", producto.getId() + ".png");
-            modeloTabla.addRow(new Object[] { producto.getId(), producto.getNombre(), producto.getPrecio(),
-                    producto.getStock(), producto.getCategoria(), imagen.isFile() ? "Sí" : "No" });
+            if (producto.getId().equals(productoSeleccionadoId)) {
+                seleccionSigueExistiendo = true;
+                break;
+            }
+        }
+        if (!seleccionSigueExistiendo) {
+            productoSeleccionadoId = null;
+        }
+
+        if (inventario.getListaProductos().isEmpty()) {
+            panelTarjetasProductos.setLayout(new GridBagLayout());
+            JLabel sinProductos = new JLabel("Aún no hay productos en el inventario.");
+            sinProductos.setFont(new Font("SansSerif", Font.PLAIN, 16));
+            sinProductos.setForeground(TEXTO_CLARO);
+            panelTarjetasProductos.add(sinProductos, new GridBagConstraints());
+        } else {
+            panelTarjetasProductos.setLayout(new GridLayout(0, 3, 14, 14));
+            for (Producto producto : inventario.getListaProductos()) {
+                panelTarjetasProductos.add(crearTarjetaProducto(producto));
+            }
+            int anchoDisponible = panelTarjetasProductos.getParent() == null
+                    ? panelTarjetasProductos.getWidth() : panelTarjetasProductos.getParent().getWidth();
+            actualizarColumnasTarjetas(anchoDisponible);
+        }
+        panelTarjetasProductos.revalidate();
+        panelTarjetasProductos.repaint();
+    }
+
+    private void actualizarEstiloSeleccionTarjetas() {
+        for (Component componente : panelTarjetasProductos.getComponents()) {
+            if (componente instanceof JPanel) {
+                JPanel tarjeta = (JPanel) componente;
+                String id = (String) tarjeta.getClientProperty("productoId");
+                tarjeta.setBorder(crearBordeTarjeta(productoSeleccionadoId.equals(id)));
+            }
+        }
+        panelTarjetasProductos.repaint();
+    }
+
+    private javax.swing.border.Border crearBordeTarjeta(boolean seleccionada) {
+        return BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(seleccionada ? AZUL : new Color(220, 226, 233),
+                        seleccionada ? 2 : 1),
+                BorderFactory.createEmptyBorder(10, 10, 10, 10));
+    }
+
+    private void actualizarColumnasTarjetas(int anchoDisponible) {
+        if (!(panelTarjetasProductos.getLayout() instanceof GridLayout)
+                || panelTarjetasProductos.getComponentCount() == 0) {
+            return;
+        }
+        int separacion = 14;
+        int anchoTarjetaMinimo = 230;
+        int ancho = anchoDisponible > 0 ? anchoDisponible : anchoTarjetaMinimo * 3 + separacion * 2;
+        int columnas = Math.max(1, (ancho + separacion) / (anchoTarjetaMinimo + separacion));
+        GridLayout distribucion = (GridLayout) panelTarjetasProductos.getLayout();
+        if (distribucion.getColumns() != columnas) {
+            distribucion.setColumns(columnas);
+            panelTarjetasProductos.revalidate();
+        }
+    }
+
+    private JPanel crearTarjetaProducto(Producto producto) {
+        boolean seleccionado = producto.getId().equals(productoSeleccionadoId);
+        JPanel tarjeta = new JPanel(new BorderLayout(0, 10));
+        tarjeta.setBackground(SUPERFICIE);
+        tarjeta.putClientProperty("productoId", producto.getId());
+        tarjeta.setBorder(crearBordeTarjeta(seleccionado));
+        tarjeta.setPreferredSize(new Dimension(220, 240));
+        tarjeta.setToolTipText("Haz clic para seleccionar este producto");
+
+        JLabel imagen = new JLabel("Sin imagen", JLabel.CENTER);
+        imagen.setOpaque(true);
+        imagen.setBackground(FONDO);
+        imagen.setForeground(TEXTO_CLARO);
+        imagen.setPreferredSize(new Dimension(170, 110));
+        File archivoImagen = new File("imagenes", producto.getId() + ".png");
+        if (archivoImagen.isFile()) {
+            try {
+                java.awt.image.BufferedImage imagenOriginal = ImageIO.read(archivoImagen);
+                if (imagenOriginal != null) {
+                        double escala = Math.min(160.0 / imagenOriginal.getWidth(),
+                            100.0 / imagenOriginal.getHeight());
+                    int ancho = Math.max(1, (int) (imagenOriginal.getWidth() * escala));
+                    int alto = Math.max(1, (int) (imagenOriginal.getHeight() * escala));
+                    Image imagenEscalada = imagenOriginal.getScaledInstance(ancho, alto, Image.SCALE_SMOOTH);
+                    imagen.setText("");
+                    imagen.setIcon(new ImageIcon(imagenEscalada));
+                }
+            } catch (IOException ex) {
+                imagen.setText("Imagen no disponible");
+            }
+        }
+        tarjeta.add(imagen, BorderLayout.NORTH);
+
+        JPanel detalles = new JPanel();
+        detalles.setLayout(new BoxLayout(detalles, BoxLayout.Y_AXIS));
+        detalles.setBackground(SUPERFICIE);
+        JLabel id = new JLabel("ID: " + producto.getId());
+        id.setFont(new Font("SansSerif", Font.PLAIN, 11));
+        id.setForeground(TEXTO_CLARO);
+        JLabel nombre = new JLabel(producto.getNombre());
+        nombre.setFont(new Font("SansSerif", Font.BOLD, 16));
+        nombre.setForeground(TEXTO);
+        JLabel categoria = new JLabel("Categoría: " + producto.getCategoria());
+        categoria.setFont(new Font("SansSerif", Font.PLAIN, 12));
+        categoria.setForeground(TEXTO_CLARO);
+        JLabel precio = new JLabel("$" + producto.getPrecio());
+        precio.setFont(new Font("SansSerif", Font.BOLD, 17));
+        precio.setForeground(AZUL_MARINO);
+        JLabel stock = new JLabel("Stock: " + producto.getStock());
+        stock.setFont(new Font("SansSerif", Font.BOLD, 12));
+        stock.setForeground(producto.getStock() > 0 ? new Color(35, 130, 85) : new Color(190, 62, 62));
+        detalles.add(id);
+        detalles.add(Box.createVerticalStrut(4));
+        detalles.add(nombre);
+        detalles.add(Box.createVerticalStrut(4));
+        detalles.add(categoria);
+        detalles.add(Box.createVerticalStrut(8));
+        detalles.add(precio);
+        detalles.add(Box.createVerticalStrut(4));
+        detalles.add(stock);
+        tarjeta.add(detalles, BorderLayout.CENTER);
+
+        MouseAdapter selector = new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                cargarSeleccion(producto);
+            }
+        };
+        agregarListenerSeleccion(tarjeta, selector);
+        return tarjeta;
+    }
+
+    private void agregarListenerSeleccion(Component componente, MouseAdapter selector) {
+        componente.addMouseListener(selector);
+        componente.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        if (componente instanceof Container) {
+            for (Component hijo : ((Container) componente).getComponents()) {
+                agregarListenerSeleccion(hijo, selector);
+            }
         }
     }
 
@@ -539,11 +710,12 @@ public class VentanaAdmin extends JFrame {
         txtPrecio.setText("");
         txtCantidad.setText("");
         txtCategoria.setText("");
-        tablaProductos.clearSelection();
+        productoSeleccionadoId = null;
+        refrescarTarjetas();
     }
 
     private void mostrarSeleccion() {
-        JOptionPane.showMessageDialog(this, "Selecciona un producto en la tabla.", "Falta selección",
+        JOptionPane.showMessageDialog(this, "Selecciona una tarjeta de producto.", "Falta selección",
                 JOptionPane.WARNING_MESSAGE);
     }
 
@@ -551,6 +723,33 @@ public class VentanaAdmin extends JFrame {
         JOptionPane.showMessageDialog(this,
                 "Ingresa un nombre, un precio válido y una cantidad entera no negativa.",
                 "Datos inválidos", JOptionPane.WARNING_MESSAGE);
+    }
+
+    private static class PanelTarjetasProductos extends JPanel implements Scrollable {
+        @Override
+        public Dimension getPreferredScrollableViewportSize() {
+            return new Dimension(720, 520);
+        }
+
+        @Override
+        public int getScrollableUnitIncrement(Rectangle visibleRect, int orientation, int direction) {
+            return 20;
+        }
+
+        @Override
+        public int getScrollableBlockIncrement(Rectangle visibleRect, int orientation, int direction) {
+            return Math.max(20, visibleRect.height - 20);
+        }
+
+        @Override
+        public boolean getScrollableTracksViewportWidth() {
+            return true;
+        }
+
+        @Override
+        public boolean getScrollableTracksViewportHeight() {
+            return false;
+        }
     }
 
     public static void main(String[] args) {
