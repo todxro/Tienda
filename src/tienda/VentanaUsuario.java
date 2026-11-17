@@ -547,7 +547,7 @@ public class VentanaUsuario extends JFrame {
     }
 
     // una tarjeta por producto: imagen arriba, datos al medio y boton abajo
-    private JPanel crearTarjeta(Producto producto) {
+private JPanel crearTarjeta(Producto producto) {
         JPanel tarjeta = new JPanel(new BorderLayout(0, 8));
         tarjeta.setBackground(SUPERFICIE);
         tarjeta.setBorder(BorderFactory.createCompoundBorder(
@@ -569,7 +569,7 @@ public class VentanaUsuario extends JFrame {
         datos.add(precio);
         datos.add(stock);
 
-     JPanel panelAccionesTarjeta = new JPanel(new GridLayout(2, 1, 4, 4));
+        JPanel panelAccionesTarjeta = new JPanel(new GridLayout(3, 1, 0, 6));
         panelAccionesTarjeta.setOpaque(false);
 
         if (producto.getStock() > 0) {
@@ -610,18 +610,14 @@ public class VentanaUsuario extends JFrame {
         });
         panelAccionesTarjeta.add(btnFavorito);
 
-        tarjeta.add(crearImagen(producto.getId()), BorderLayout.NORTH);
-        tarjeta.add(datos, BorderLayout.CENTER);
         JButton btnConsultar = new JButton("Consultar sobre este producto");
         estilizarBoton(btnConsultar, AZUL_MARINO, MARFIL);
         btnConsultar.addActionListener(e -> consultarProducto(producto));
+        panelAccionesTarjeta.add(btnConsultar);
 
-        JPanel acciones = new JPanel(new GridLayout(2, 1, 0, 6));
-        acciones.setOpaque(false);
-        acciones.add(btnAgregar);
-        acciones.add(btnConsultar);
-
-        tarjeta.add(acciones, BorderLayout.SOUTH);
+        tarjeta.add(crearImagen(producto.getId()), BorderLayout.NORTH);
+        tarjeta.add(datos, BorderLayout.CENTER);
+        tarjeta.add(panelAccionesTarjeta, BorderLayout.SOUTH);
         return tarjeta;
     }
 
