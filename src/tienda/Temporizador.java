@@ -14,6 +14,16 @@ public class Temporizador {
     private Timer timer; 
     private int duracionSegundos;
     private int tiempoRestante;
+    private JLabel lblCarrito;
+
+    public void setLabelCarrito(JLabel l) {
+        lblCarrito = l;
+    }
+
+    private void mostrarTiempo(String texto) {
+        lblContador.setText(texto);
+        if (lblCarrito != null) lblCarrito.setText(texto);
+    }
 
     public Temporizador(Carrito carrito, Inventario inventario, int minutos,
                         JLabel lblContador, VentanaUsuario ventana) {
@@ -21,7 +31,7 @@ public class Temporizador {
         this.inventario = inventario;
         this.ventana = ventana;
         this.lblContador = lblContador;
-        this.duracionSegundos = minutos * 60;
+        this.duracionSegundos = leerSegundos(); 
         this.tiempoRestante = duracionSegundos;
 
         // se ejecuta cada 1 segundo
@@ -41,7 +51,7 @@ public class Temporizador {
                 carrito.vaciarCarrito();       // devuelve el stock
                 inventario.guardarEnArchivo(); // guarda el stock en el CSV
                 ventana.actualizarVista();     // refresca catalogo y carrito
-                lblContador.setText("--:--");
+                mostrarTiempo("--:--");
                 JOptionPane.showMessageDialog(ventana, "Tu carrito se ha vaciado",
                         "Carrito expirado", JOptionPane.ERROR_MESSAGE);
             }
@@ -50,10 +60,11 @@ public class Temporizador {
 
     // se llama cada vez que el cliente modifica el carrito
     public void reiniciar() {
+        duracionSegundos = leerSegundos();    
         tiempoRestante = duracionSegundos;
         if (carrito.getProductos().isEmpty()) {
             timer.stop();
-            lblContador.setText("--:--");
+            mostrarTiempo("--:--");
         } else {
             actualizarLabel();
             timer.restart();
@@ -64,9 +75,15 @@ public class Temporizador {
         timer.stop();
     }
 
+    private int leerSegundos() {
+        try {
+            return Integer.parseInt(java.nio.file.Files.readString(java.nio.file.Path.of("tiempo_caja.txt")).trim()) * 60;
+        } catch (Exception e) {
+            return 5 * 60; // por defecto
+        }
+    }
+
     private void actualizarLabel() {
-        int m = tiempoRestante / 60;
-        int s = tiempoRestante % 60;
-        lblContador.setText(String.format("%02d:%02d", m, s));
+        mostrarTiempo(String.format("%02d:%02d", tiempoRestante / 60, tiempoRestante % 60));
     }
 }

@@ -189,6 +189,21 @@ public class VentanaAdmin extends JFrame {
         JButton btnStock = new JButton("Stock");
         JButton btnVentas = new JButton("Ventas");
         JButton btnChat = new JButton("Chat");
+        JButton btnTiempo = new JButton("Tiempo de caja");
+        agregarBoton(panelControles, btnTiempo, 9);
+        btnTiempo.addActionListener(e -> {
+            String r = JOptionPane.showInputDialog(this, "Minutos para expirar el carrito (minimo 2):");
+            try {
+                if (r == null) return;
+                if (Integer.parseInt(r.trim()) < 2) {
+                    JOptionPane.showMessageDialog(this, "No se puede poner menor a 2 minutos");
+                    return;
+                }
+                java.nio.file.Files.writeString(java.nio.file.Path.of("tiempo_caja.txt"), r.trim());
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(this, "Numero invalido");
+            }
+        });
 
         JPanel barraNavegacion = new JPanel(new BorderLayout(16, 0));
         barraNavegacion.setBorder(BorderFactory.createCompoundBorder(

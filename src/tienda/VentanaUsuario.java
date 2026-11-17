@@ -85,6 +85,7 @@ public class VentanaUsuario extends JFrame {
     private volatile boolean chatConectando;
     private Temporizador temporizador;
     private JLabel lblcontador = new JLabel("--:--"); 
+    private JLabel lblcontadorCarrito = new JLabel("--:--");
 
     public VentanaUsuario() {
         this(null);
@@ -234,6 +235,7 @@ public class VentanaUsuario extends JFrame {
             temporizador.detener();
         }
         temporizador = new Temporizador(carrito, inventario, 5 , lblcontador, this); //cambiar el numero es para cambiar el coso
+        temporizador.setLabelCarrito(lblcontadorCarrito);
         paneles.revalidate();
         paneles.repaint();
     }
@@ -907,6 +909,8 @@ public class VentanaUsuario extends JFrame {
                 BorderFactory.createEmptyBorder(8, 12, 8, 12)));
         encabezado.add(titulos, BorderLayout.CENTER);
         encabezado.add(cantidadProductosCarrito, BorderLayout.EAST);
+        lblcontadorCarrito.setForeground(MARFIL);            
+        encabezado.add(lblcontadorCarrito, BorderLayout.SOUTH);
         panel.add(encabezado, BorderLayout.NORTH);
 
         JPanel centro = new JPanel(new BorderLayout());
