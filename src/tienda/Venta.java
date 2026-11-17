@@ -14,6 +14,8 @@ public class Venta {
     private double subtotal;
     private double iva;
     private double total;
+    private String cupon;
+    private double descuento;
 
     public Venta(String idVenta, Date fecha, String rutCliente, String nombreCliente, 
                  String correoCliente, String detalleProductos, double subtotal, double iva, double total) {
@@ -26,6 +28,17 @@ public class Venta {
         this.subtotal = subtotal;
         this.iva = iva;
         this.total = total;
+        this.cupon = "";
+        this.descuento = 0;
+    }
+
+    // constructor para ventas con cupon, guarda el codigo y el monto descontado
+    public Venta(String idVenta, Date fecha, String rutCliente, String nombreCliente,
+                 String correoCliente, String detalleProductos, double subtotal, double iva, double total,
+                 String cupon, double descuento) {
+        this(idVenta, fecha, rutCliente, nombreCliente, correoCliente, detalleProductos, subtotal, iva, total);
+        this.cupon = cupon == null ? "" : cupon;
+        this.descuento = descuento;
     }
 
     public String getIdVenta() { return idVenta; }
@@ -52,7 +65,8 @@ public class Venta {
         // Escapa los campos de texto para mantener intacta la estructura de columnas.
         return escaparCSV(idVenta) + "," + getFechaFormateada() + "," + escaparCSV(rutCliente) + ","
                 + escaparCSV(nombreCliente) + "," + escaparCSV(correoCliente) + ","
-                + escaparCSV(detalleProductos) + "," + subtotal + "," + iva + "," + total;
+                + escaparCSV(detalleProductos) + "," + subtotal + "," + iva + "," + total + ","
+                + escaparCSV(cupon) + "," + descuento;
     }
 
     private String escaparCSV(String valor) {

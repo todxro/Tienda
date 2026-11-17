@@ -14,8 +14,8 @@ import java.util.List;
 // Guarda las ventas y consulta el historial persistido en ventas.csv.
 public class GestorVentas {
     private static final String RUTA_ARCHIVO = "ventas.csv";
-    private static final String ENCABEZADO = "numeroTicket,fecha,rutCliente,nombreCliente,correoCliente,detalleProductos,subtotal,iva,total";
-
+    private static final String ENCABEZADO = "numeroTicket,fecha,rutCliente,nombreCliente,correoCliente,detalleProductos,subtotal,iva,total,cupon,descuento";
+    
     public void guardarVenta(Venta venta) throws IOException {
         File archivo = new File(RUTA_ARCHIVO);
         prepararArchivo(archivo);
@@ -136,7 +136,12 @@ public class GestorVentas {
                 if (datos.length < 9) {
                     throw new IOException("La venta en la línea " + numeroLinea + " está incompleta.");
                 }
-                ventas.add(datos);
+                // las ventas antiguas no tienen cupon ni descuento, se rellenan vacios
+                String[] completa = new String[11];
+                for (int i = 0; i < completa.length; i++) {
+                    completa[i] = i < datos.length ? datos[i] : "";
+                }
+                ventas.add(completa);            
             }
         }
 
