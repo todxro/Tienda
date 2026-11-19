@@ -25,11 +25,11 @@ public class VentanaUsuario extends JFrame {
     private static final Color NARANJA     = new Color(244, 132, 54);
     private static final Color AMARILLO    = new Color(250, 204, 76);
     private static final Color DORADO      = AMARILLO;
-    private static final Color FONDO       = new Color(232, 217, 195);
-    private static final Color SUPERFICIE  = new Color(217, 197, 168);
+    private static final Color FONDO       = new Color(234, 241, 248);
+    private static final Color SUPERFICIE  = new Color(248, 251, 254);
     private static final Color TEXTO       = new Color(25, 52, 76);
     private static final Color TEXTO_CLARO = new Color(72, 98, 126);
-    private static final Color MARFIL      = new Color(246, 233, 207);
+    private static final Color MARFIL      = Color.WHITE;
     private Usuario usuario;
     private Carrito carrito;
     private final Inventario inventario;
