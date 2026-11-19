@@ -16,7 +16,8 @@ public class Venta {
     private double total;
     private String cupon;
     private double descuento;
-
+    private EstadoPedido estado;
+    
     public Venta(String idVenta, Date fecha, String rutCliente, String nombreCliente, 
                  String correoCliente, String detalleProductos, double subtotal, double iva, double total) {
         this.idVenta = idVenta;
@@ -30,6 +31,7 @@ public class Venta {
         this.total = total;
         this.cupon = "";
         this.descuento = 0;
+        this.estado = EstadoPedido.PENDIENTE; // toda venta nueva parte como pendiente
     }
 
     // constructor para ventas con cupon, guarda el codigo y el monto descontado
@@ -45,7 +47,7 @@ public class Venta {
     public Date getFecha() { return fecha; }
     public String getRutCliente() { return rutCliente; }
     public String getNombreCliente() { return nombreCliente; }
-
+    public EstadoPedido getEstado() { return estado; }
     public void setIdVenta(String idVenta) {
         this.idVenta = idVenta;
     }
@@ -66,9 +68,8 @@ public class Venta {
         return escaparCSV(idVenta) + "," + getFechaFormateada() + "," + escaparCSV(rutCliente) + ","
                 + escaparCSV(nombreCliente) + "," + escaparCSV(correoCliente) + ","
                 + escaparCSV(detalleProductos) + "," + subtotal + "," + iva + "," + total + ","
-                + escaparCSV(cupon) + "," + descuento;
+                + escaparCSV(cupon) + "," + descuento + "," + estado.name();
     }
-
     private String escaparCSV(String valor) {
         if (valor == null) {
             return "";
