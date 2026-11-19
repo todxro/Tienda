@@ -14,8 +14,7 @@ import java.util.List;
 // Guarda las ventas y consulta el historial persistido en ventas.csv.
 public class GestorVentas {
     private static final String RUTA_ARCHIVO = "ventas.csv";
-    private static final String ENCABEZADO = "numeroTicket,fecha,rutCliente,nombreCliente,correoCliente,detalleProductos,subtotal,iva,total,cupon,descuento";
-    
+    private static final String ENCABEZADO = "numeroTicket,fecha,rutCliente,nombreCliente,correoCliente,detalleProductos,subtotal,iva,total,cupon,descuento,estado";    
     public void guardarVenta(Venta venta) throws IOException {
         File archivo = new File(RUTA_ARCHIVO);
         prepararArchivo(archivo);
@@ -136,8 +135,8 @@ public class GestorVentas {
                 if (datos.length < 9) {
                     throw new IOException("La venta en la línea " + numeroLinea + " está incompleta.");
                 }
-                // las ventas antiguas no tienen cupon ni descuento, se rellenan vacios
-                String[] completa = new String[11];
+                // las ventas antiguas no tienen cupon, descuento ni estado
+                String[] completa = new String[12];
                 for (int i = 0; i < completa.length; i++) {
                     completa[i] = i < datos.length ? datos[i] : "";
                 }
@@ -146,6 +145,41 @@ public class GestorVentas {
         }
 
         return ventas;
+    }
+    
+    // avanza un paso el estado de una venta y reescribe el archivo
+    // devuelve el nuevo estado, o null si no se encontro la venta o ya estaba entregada
+    public EstadoPedido avanzarEstado(String ticket, String fecha) throws IOException {
+        File archivo = new File(RUTA_ARCHIVO);
+        if (!archivo.exists()) {
+            return null;
+        }
+
+        List<String> lineas = Files.readAllLines(archivo.toPath(), StandardCharsets.UTF_8);
+        for (int i = 1; i < lineas.size(); i++) {
+            String[] datos = parsearLineaCSV(lineas.get(i));
+            if (datos.length < 9 || !datos[0].equals(ticket) || !datos[1].equals(fecha)) {
+                continue;
+            }
+
+            String estadoActual = datos.length >= 12 ? datos[11] : "";
+            EstadoPedido siguiente = EstadoPedido.desdeTexto(estadoActual).siguiente();
+            if (siguiente == null) {
+                return null;
+            }
+
+            // deja la linea sin el estado viejo, o con cupon y descuento vacios si es una venta antigua
+            String base = lineas.get(i);
+            if (datos.length >= 12) {
+                base = base.substring(0, base.lastIndexOf(','));
+            } else if (datos.length == 9) {
+                base = base + ",,0";
+            }
+            lineas.set(i, base + "," + siguiente.name());
+            Files.write(archivo.toPath(), lineas, StandardCharsets.UTF_8);
+            return siguiente;
+        }
+        return null;
     }
 
     private String[] parsearLineaCSV(String linea) {

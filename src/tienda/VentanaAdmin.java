@@ -136,7 +136,7 @@ public class VentanaAdmin extends JFrame {
         // Las vistas de stock y ventas comparten el espacio central de la ventana.
         modeloVentas = new DefaultTableModel(
                 new Object[] { "Ticket", "Fecha", "RUT", "Cliente", "Correo", "Productos", "Subtotal", "IVA",
-                        "Total" }, 0) {
+                        "Total", "Estado" }, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
                 return false;
@@ -159,8 +159,15 @@ public class VentanaAdmin extends JFrame {
         panelVentas.setBackground(FONDO);
         panelVentas.setBorder(BorderFactory.createEmptyBorder(16, 16, 16, 16));
         panelVentas.add(crearEncabezado("Ventas", "Consulta el historial de ventas de la tienda."),
-            BorderLayout.NORTH);
+        BorderLayout.NORTH);
         panelVentas.add(scrollVentas, BorderLayout.CENTER);
+        JButton btnAvanzarEstado = new JButton("Avanzar estado");
+        estilizarBotonStock(btnAvanzarEstado);
+        btnAvanzarEstado.addActionListener(e -> avanzarEstadoSeleccionado(tablaVentas));
+        JPanel barraVentas = new JPanel(new BorderLayout());
+        barraVentas.setBackground(FONDO);
+        barraVentas.add(btnAvanzarEstado, BorderLayout.EAST);
+        panelVentas.add(barraVentas, BorderLayout.SOUTH);
 
         modeloCupones = new DefaultTableModel(
                 new Object[] { "Código", "Tipo", "Descuento", "Vencimiento", "Usos realizados / máximos" }, 0) {
@@ -306,8 +313,9 @@ public class VentanaAdmin extends JFrame {
             for (String[] venta : new GestorVentas().obtenerTodasLasVentas()) {
                 modeloVentas.addRow(new Object[] {
                         venta[0], venta[1], venta[2], venta[3], venta[4], venta[5],
-                        "$" + venta[6], "$" + venta[7], "$" + venta[8]
-                });
+                        "$" + venta[6], "$" + venta[7], "$" + venta[8],
+                        EstadoPedido.desdeTexto(venta[11]).getTexto()                
+                        });
             }
         } catch (java.io.IOException ex) {
             JOptionPane.showMessageDialog(this, "No se pudieron cargar las ventas: " + ex.getMessage(),
@@ -316,6 +324,35 @@ public class VentanaAdmin extends JFrame {
         }
 
         disenoVistas.show(panelVistas, "ventas");
+    }
+
+    // pasa el pedido seleccionado al siguiente estado y recarga la tabla
+    private void avanzarEstadoSeleccionado(JTable tabla) {
+        int fila = tabla.getSelectedRow();
+        if (fila < 0) {
+            JOptionPane.showMessageDialog(this, "Selecciona una venta de la tabla.", "Seguimiento",
+                    JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        // la tabla se puede ordenar, por eso se convierte la fila a la del modelo
+        int filaModelo = tabla.convertRowIndexToModel(fila);
+        String ticket = String.valueOf(modeloVentas.getValueAt(filaModelo, 0));
+        String fecha = String.valueOf(modeloVentas.getValueAt(filaModelo, 1));
+
+        try {
+            EstadoPedido nuevo = new GestorVentas().avanzarEstado(ticket, fecha);
+            if (nuevo == null) {
+                JOptionPane.showMessageDialog(this, "Este pedido ya fue entregado.", "Seguimiento",
+                        JOptionPane.INFORMATION_MESSAGE);
+                return;
+            }
+        } catch (IOException ex) {
+            JOptionPane.showMessageDialog(this, "No se pudo actualizar el estado: " + ex.getMessage(),
+                    "Error al actualizar", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+        mostrarVentas();
     }
 
     private void mostrarCupones() {
