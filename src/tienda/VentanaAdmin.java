@@ -1,5 +1,5 @@
 package tienda;
-
+ 
 import java.awt.BorderLayout;
 import java.awt.CardLayout;
 import java.awt.Color;
@@ -26,24 +26,24 @@ import javax.imageio.ImageIO;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
+import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
-import javax.swing.ImageIcon;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
-import javax.swing.Scrollable;
 import javax.swing.JTable;
 import javax.swing.JTextField;
+import javax.swing.Scrollable;
 import javax.swing.SwingUtilities;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.table.DefaultTableModel;
-
-
+ 
+ 
 // Reúne las vistas y acciones con las que administración mantiene la tienda.
 // Índice por línea:
 // - Inicio y navegación: constructor VentanaAdmin (88), mostrarVentas (512)
@@ -74,25 +74,25 @@ public class VentanaAdmin extends JFrame {
     private final JPanel panelVistas;
     private final DefaultTableModel modeloVentas;
     private final DefaultTableModel modeloCupones;
-
+ 
     public VentanaAdmin() {
         inventario = new Inventario();
         setTitle("Panel Administrador - Tienda");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         getContentPane().setBackground(FONDO);
         setLayout(new BorderLayout(14, 14));
-
+ 
         // El inventario se presenta en tarjetas para mostrar las fotos de los productos.
         panelTarjetasProductos = new PanelTarjetasProductos();
         panelTarjetasProductos.setLayout(new GridLayout(0, 3, 14, 14));
         panelTarjetasProductos.setBackground(FONDO);
         panelTarjetasProductos.setBorder(BorderFactory.createEmptyBorder(4, 4, 4, 4));
-
+ 
         txtNombre = new JTextField();
         txtPrecio = new JTextField();
         txtCantidad = new JTextField();
         txtCategoria = new JTextField();
-
+ 
         // Formulario lateral para agregar, editar, borrar y consultar productos.
         JPanel panelControles = new JPanel(new GridBagLayout());
         panelControles.setBackground(SUPERFICIE);
@@ -102,7 +102,7 @@ public class VentanaAdmin extends JFrame {
         agregarCampo(panelControles, "Precio:", txtPrecio, 1);
         agregarCampo(panelControles, "Cantidad:", txtCantidad, 2);
         agregarCampo(panelControles, "Categoría:", txtCategoria, 3);
-
+ 
         JButton btnAgregar = new JButton("Agregar producto");
         JButton btnActualizar = new JButton("Actualizar producto");
         JButton btnBorrar = new JButton("Borrar seleccionado");
@@ -114,7 +114,7 @@ public class VentanaAdmin extends JFrame {
         agregarBoton(panelControles, btnValorTotal, 7);
         agregarBoton(panelControles, btnCargarImagen, 8);
         btnCargarImagen.addActionListener(e -> seleccionarImagenProducto());
-
+ 
         JPanel panelStock = new JPanel(new BorderLayout(12, 12));
         panelStock.setBackground(FONDO);
         panelStock.setBorder(BorderFactory.createEmptyBorder(16, 16, 16, 16));
@@ -132,7 +132,7 @@ public class VentanaAdmin extends JFrame {
             BorderLayout.NORTH);
         panelStock.add(scrollProductos, BorderLayout.CENTER);
         panelStock.add(panelControles, BorderLayout.WEST);
-
+ 
         // Las vistas de stock y ventas comparten el espacio central de la ventana.
         modeloVentas = new DefaultTableModel(
                 new Object[] { "Ticket", "Fecha", "RUT", "Cliente", "Correo", "Productos", "Subtotal", "IVA",
@@ -168,7 +168,7 @@ public class VentanaAdmin extends JFrame {
         barraVentas.setBackground(FONDO);
         barraVentas.add(btnAvanzarEstado, BorderLayout.EAST);
         panelVentas.add(barraVentas, BorderLayout.SOUTH);
-
+ 
         modeloCupones = new DefaultTableModel(
                 new Object[] { "Código", "Tipo", "Descuento", "Vencimiento", "Usos realizados / máximos" }, 0) {
             @Override
@@ -204,13 +204,13 @@ public class VentanaAdmin extends JFrame {
         panelCupones.setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
         panelCupones.add(encabezadoCupones, BorderLayout.NORTH);
         panelCupones.add(scrollCupones, BorderLayout.CENTER);
-
+ 
         disenoVistas = new CardLayout();
         panelVistas = new JPanel(disenoVistas);
         panelVistas.add(panelStock, "stock");
         panelVistas.add(panelVentas, "ventas");
         panelVistas.add(panelCupones, "cupones");
-
+ 
         JLabel tituloAdmin = new JLabel("<html>TIENDA<br><b>ADMINISTRACIÓN</b></html>");
         tituloAdmin.setFont(new Font("SansSerif", Font.PLAIN, 18));
         tituloAdmin.setForeground(MARFIL);
@@ -218,7 +218,22 @@ public class VentanaAdmin extends JFrame {
         JButton btnStock = new JButton("Stock");
         JButton btnVentas = new JButton("Ventas");
         JButton btnCupones = new JButton("Cupones");
-
+        JButton btnTiempo = new JButton("Tiempo de caja");
+        agregarBoton(panelControles, btnTiempo, 9);
+        btnTiempo.addActionListener(e -> {
+            String r = JOptionPane.showInputDialog(this, "Minutos para expirar el carrito (minimo 2):");
+            try {
+                if (r == null) return;
+                if (Integer.parseInt(r.trim()) < 2) {
+                    JOptionPane.showMessageDialog(this, "No se puede poner menor a 2 minutos");
+                    return;
+                }
+                java.nio.file.Files.writeString(java.nio.file.Path.of("tiempo_caja.txt"), r.trim());
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(this, "Numero invalido");
+            }
+        });
+ 
         JPanel barraNavegacion = new JPanel(new BorderLayout(0, 18));
         barraNavegacion.setPreferredSize(new Dimension(205, 0));
         barraNavegacion.setBorder(BorderFactory.createEmptyBorder(18, 14, 18, 14));
@@ -245,17 +260,17 @@ public class VentanaAdmin extends JFrame {
         btnCupones.addActionListener(e -> mostrarCupones());
         add(barraNavegacion, BorderLayout.WEST);
         add(panelVistas, BorderLayout.CENTER);
-
+ 
         btnAgregar.addActionListener(e -> agregarProducto());
         btnActualizar.addActionListener(e -> actualizarProducto());
         btnBorrar.addActionListener(e -> borrarProducto());
         btnValorTotal.addActionListener(e -> JOptionPane.showMessageDialog(this,
                 "Valor total del inventario: $" + inventario.calcularValorTotalInventario()));
-
+ 
         refrescarTarjetas();
         setExtendedState(JFrame.MAXIMIZED_BOTH);
     }
-
+ 
     private void seleccionarImagenProducto() {
         String id = idSeleccionado();
         if (id == null) {
@@ -263,7 +278,7 @@ public class VentanaAdmin extends JFrame {
                     "Falta selección", JOptionPane.WARNING_MESSAGE);
             return;
         }
-
+ 
         JFileChooser selector = new JFileChooser();
         selector.setDialogTitle("Seleccionar imagen del producto " + id);
         selector.setFileFilter(new FileNameExtensionFilter(
@@ -271,7 +286,7 @@ public class VentanaAdmin extends JFrame {
         if (selector.showOpenDialog(this) != JFileChooser.APPROVE_OPTION) {
             return;
         }
-
+ 
         File imagenSeleccionada = selector.getSelectedFile();
         File carpetaImagenes = new File("imagenes");
         File destino = new File(carpetaImagenes, id + ".png");
@@ -279,7 +294,7 @@ public class VentanaAdmin extends JFrame {
             if (!carpetaImagenes.isDirectory() && !carpetaImagenes.mkdirs()) {
                 throw new IOException("No se pudo crear la carpeta de imágenes.");
             }
-
+ 
             java.awt.image.BufferedImage imagen = ImageIO.read(imagenSeleccionada);
             if (imagen == null) {
                 throw new IOException("El archivo seleccionado no contiene una imagen válida.");
@@ -295,7 +310,7 @@ public class VentanaAdmin extends JFrame {
             if (!ImageIO.write(imagen, "png", destino)) {
                 throw new IOException("No se pudo guardar la imagen en formato PNG.");
             }
-
+ 
             refrescarTarjetas();
             JOptionPane.showMessageDialog(this, "Imagen guardada para el producto " + id + ".",
                     "Imagen cargada", JOptionPane.INFORMATION_MESSAGE);
@@ -304,11 +319,11 @@ public class VentanaAdmin extends JFrame {
                     "Error al cargar imagen", JOptionPane.ERROR_MESSAGE);
         }
     }
-
+ 
     private void mostrarVentas() {
         // Recarga el historial y cambia la tarjeta visible a la tabla de ventas.
         modeloVentas.setRowCount(0);
-
+ 
         try {
             for (String[] venta : new GestorVentas().obtenerTodasLasVentas()) {
                 modeloVentas.addRow(new Object[] {
@@ -322,10 +337,10 @@ public class VentanaAdmin extends JFrame {
                     "Error al cargar ventas", JOptionPane.ERROR_MESSAGE);
             return;
         }
-
+ 
         disenoVistas.show(panelVistas, "ventas");
     }
-
+ 
     // pasa el pedido seleccionado al siguiente estado y recarga la tabla
     private void avanzarEstadoSeleccionado(JTable tabla) {
         int fila = tabla.getSelectedRow();
@@ -334,12 +349,12 @@ public class VentanaAdmin extends JFrame {
                     JOptionPane.WARNING_MESSAGE);
             return;
         }
-
+ 
         // la tabla se puede ordenar, por eso se convierte la fila a la del modelo
         int filaModelo = tabla.convertRowIndexToModel(fila);
         String ticket = String.valueOf(modeloVentas.getValueAt(filaModelo, 0));
         String fecha = String.valueOf(modeloVentas.getValueAt(filaModelo, 1));
-
+ 
         try {
             EstadoPedido nuevo = new GestorVentas().avanzarEstado(ticket, fecha);
             if (nuevo == null) {
@@ -354,7 +369,7 @@ public class VentanaAdmin extends JFrame {
         }
         mostrarVentas();
     }
-
+ 
     private void mostrarCupones() {
         try {
             modeloCupones.setRowCount(0);
@@ -372,7 +387,7 @@ public class VentanaAdmin extends JFrame {
                     "Error al cargar cupones", JOptionPane.ERROR_MESSAGE);
         }
     }
-
+ 
     private void agregarCupon() {
         JTextField campoCodigo = new JTextField();
         JComboBox<String> campoTipo = new JComboBox<>(new String[] { "Porcentaje (%)", "Monto fijo ($)" });
@@ -386,13 +401,13 @@ public class VentanaAdmin extends JFrame {
         agregarCampo(formulario, "Descuento:", campoDescuento, 2);
         agregarCampo(formulario, "Vencimiento (AAAA-MM-DD):", campoVencimiento, 3);
         agregarCampo(formulario, "Usos máximos:", campoUsos, 4);
-
+ 
         int resultado = JOptionPane.showConfirmDialog(this, formulario, "Crear cupón",
                 JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
         if (resultado != JOptionPane.OK_OPTION) {
             return;
         }
-
+ 
         String codigo = campoCodigo.getText().trim();
         try {
             if (!codigo.matches("[A-Za-z0-9_-]+")) {
@@ -415,7 +430,7 @@ public class VentanaAdmin extends JFrame {
             if (usosMaximos <= 0) {
                 throw new IllegalArgumentException("Los usos máximos deben ser mayores que 0.");
             }
-
+ 
             Cupon cupon = new Cupon(codigo, tipo, valor, vencimiento, usosMaximos, 0);
             if (!new GestorCupones().agregar(cupon)) {
                 JOptionPane.showMessageDialog(this, "Ya existe un cupón con ese código.",
@@ -437,24 +452,24 @@ public class VentanaAdmin extends JFrame {
                     "Error al guardar cupón", JOptionPane.ERROR_MESSAGE);
         }
     }
-
+ 
     private JPanel crearEncabezado(String titulo, String descripcion) {
         JPanel encabezado = new JPanel(new BorderLayout(0, 4));
         encabezado.setBackground(FONDO);
-
+ 
         JLabel etiquetaTitulo = new JLabel(titulo);
         etiquetaTitulo.setFont(new Font("SansSerif", Font.BOLD, 22));
         etiquetaTitulo.setForeground(TEXTO);
-
+ 
         JLabel etiquetaDescripcion = new JLabel(descripcion);
         etiquetaDescripcion.setFont(new Font("SansSerif", Font.PLAIN, 13));
         etiquetaDescripcion.setForeground(TEXTO_CLARO);
-
+ 
         encabezado.add(etiquetaTitulo, BorderLayout.NORTH);
         encabezado.add(etiquetaDescripcion, BorderLayout.CENTER);
         return encabezado;
     }
-
+ 
     private void estilizarBotonStock(JButton boton) {
         boton.setFont(new Font("SansSerif", Font.BOLD, 12));
         boton.setFocusPainted(false);
@@ -462,7 +477,7 @@ public class VentanaAdmin extends JFrame {
         boton.setForeground(TEXTO);
         boton.setBorder(BorderFactory.createEmptyBorder(8, 14, 8, 14));
     }
-
+ 
     private void estilizarBotonNavegacion(JButton boton) {
         boton.setFont(new Font("SansSerif", Font.BOLD, 13));
         boton.setFocusPainted(false);
@@ -476,7 +491,7 @@ public class VentanaAdmin extends JFrame {
         boton.setAlignmentX(JButton.LEFT_ALIGNMENT);
         boton.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
     }
-
+ 
     private void agregarCampo(JPanel panel, String etiqueta, JComponent campo, int fila) {
         GridBagConstraints restricciones = new GridBagConstraints();
         restricciones.gridx = 0;
@@ -492,13 +507,13 @@ public class VentanaAdmin extends JFrame {
             ((JTextField) campo).setCaretColor(TEXTO_CLARO);
         }
         panel.add(etiquetaComponente, restricciones);
-
+ 
         restricciones.gridx = 1;
         restricciones.fill = GridBagConstraints.HORIZONTAL;
         restricciones.weightx = 1;
         panel.add(campo, restricciones);
         }
-
+ 
     private void agregarBoton(JPanel panel, JButton boton, int fila) {
         GridBagConstraints restricciones = new GridBagConstraints();
         restricciones.gridx = 0;
@@ -513,7 +528,7 @@ public class VentanaAdmin extends JFrame {
         boton.setBorder(BorderFactory.createEmptyBorder(8, 14, 8, 14));
         panel.add(boton, restricciones);
     }
-
+ 
     private void agregarProducto() {
         // Valida el formulario, agrega el producto al inventario y refresca la tabla.
         try {
@@ -523,7 +538,7 @@ public class VentanaAdmin extends JFrame {
             if (nombre.isEmpty() || precio < 0 || stock < 0) {
                 throw new IllegalArgumentException();
             }
-
+ 
             inventario.agregarProducto(new Producto(inventario.generarNuevoId(), nombre, precio, stock,
                     categoriaIngresada()));
             actualizarVista();
@@ -532,7 +547,7 @@ public class VentanaAdmin extends JFrame {
             mostrarDatosInvalidos();
         }
     }
-
+ 
     private void actualizarProducto() {
         // Guarda los cambios usando el ID del producto seleccionado, no su nombre.
         String id = idSeleccionado();
@@ -540,7 +555,7 @@ public class VentanaAdmin extends JFrame {
             mostrarSeleccion();
             return;
         }
-
+ 
         try {
             String nombre = txtNombre.getText().trim();
             double precio = Double.parseDouble(txtPrecio.getText().trim());
@@ -554,7 +569,7 @@ public class VentanaAdmin extends JFrame {
             mostrarDatosInvalidos();
         }
     }
-
+ 
     private void borrarProducto() {
         // Pide confirmación antes de eliminar el producto seleccionado del inventario.
         String id = idSeleccionado();
@@ -562,7 +577,7 @@ public class VentanaAdmin extends JFrame {
             mostrarSeleccion();
             return;
         }
-
+ 
         int respuesta = JOptionPane.showConfirmDialog(this, "¿Borrar el producto " + id + "?",
                 "Confirmar borrado", JOptionPane.YES_NO_OPTION);
         if (respuesta == JOptionPane.YES_OPTION) {
@@ -571,11 +586,11 @@ public class VentanaAdmin extends JFrame {
             limpiarCampos();
         }
     }
-
+ 
     private String idSeleccionado() {
         return productoSeleccionadoId;
     }
-
+ 
     private void cargarSeleccion(Producto producto) {
         productoSeleccionadoId = producto.getId();
         txtNombre.setText(producto.getNombre());
@@ -584,11 +599,11 @@ public class VentanaAdmin extends JFrame {
         txtCategoria.setText(producto.getCategoria());
         actualizarEstiloSeleccionTarjetas();
     }
-
+ 
     public void actualizarVista() {
         refrescarTarjetas();
     }
-
+ 
     private void refrescarTarjetas() {
         panelTarjetasProductos.removeAll();
         boolean seleccionSigueExistiendo = false;
@@ -601,7 +616,7 @@ public class VentanaAdmin extends JFrame {
         if (!seleccionSigueExistiendo) {
             productoSeleccionadoId = null;
         }
-
+ 
         if (inventario.getListaProductos().isEmpty()) {
             panelTarjetasProductos.setLayout(new GridBagLayout());
             JLabel sinProductos = new JLabel("Aún no hay productos en el inventario.");
@@ -620,7 +635,7 @@ public class VentanaAdmin extends JFrame {
         panelTarjetasProductos.revalidate();
         panelTarjetasProductos.repaint();
     }
-
+ 
     private void actualizarEstiloSeleccionTarjetas() {
         for (Component componente : panelTarjetasProductos.getComponents()) {
             if (componente instanceof JPanel) {
@@ -631,14 +646,14 @@ public class VentanaAdmin extends JFrame {
         }
         panelTarjetasProductos.repaint();
     }
-
+ 
     private javax.swing.border.Border crearBordeTarjeta(boolean seleccionada) {
         return BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(seleccionada ? AZUL : new Color(220, 226, 233),
                         seleccionada ? 2 : 1),
                 BorderFactory.createEmptyBorder(10, 10, 10, 10));
     }
-
+ 
     private void actualizarColumnasTarjetas(int anchoDisponible) {
         if (!(panelTarjetasProductos.getLayout() instanceof GridLayout)
                 || panelTarjetasProductos.getComponentCount() == 0) {
@@ -654,7 +669,7 @@ public class VentanaAdmin extends JFrame {
             panelTarjetasProductos.revalidate();
         }
     }
-
+ 
     private JPanel crearTarjetaProducto(Producto producto) {
         boolean seleccionado = producto.getId().equals(productoSeleccionadoId);
         JPanel tarjeta = new JPanel(new BorderLayout(0, 10));
@@ -663,7 +678,7 @@ public class VentanaAdmin extends JFrame {
         tarjeta.setBorder(crearBordeTarjeta(seleccionado));
         tarjeta.setPreferredSize(new Dimension(220, 240));
         tarjeta.setToolTipText("Haz clic para seleccionar este producto");
-
+ 
         JLabel imagen = new JLabel("Sin imagen", JLabel.CENTER);
         imagen.setOpaque(true);
         imagen.setBackground(FONDO);
@@ -687,7 +702,7 @@ public class VentanaAdmin extends JFrame {
             }
         }
         tarjeta.add(imagen, BorderLayout.NORTH);
-
+ 
         JPanel detalles = new JPanel();
         detalles.setLayout(new BoxLayout(detalles, BoxLayout.Y_AXIS));
         detalles.setBackground(SUPERFICIE);
@@ -716,7 +731,7 @@ public class VentanaAdmin extends JFrame {
         detalles.add(Box.createVerticalStrut(4));
         detalles.add(stock);
         tarjeta.add(detalles, BorderLayout.CENTER);
-
+ 
         MouseAdapter selector = new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
@@ -726,7 +741,7 @@ public class VentanaAdmin extends JFrame {
         agregarListenerSeleccion(tarjeta, selector);
         return tarjeta;
     }
-
+ 
     private void agregarListenerSeleccion(Component componente, MouseAdapter selector) {
         componente.addMouseListener(selector);
         componente.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
@@ -736,12 +751,12 @@ public class VentanaAdmin extends JFrame {
             }
         }
     }
-
+ 
     private String categoriaIngresada() {
         String categoria = txtCategoria.getText().trim();
         return categoria.isEmpty() ? "BASE" : categoria;
     }
-
+ 
     private void limpiarCampos() {
         txtNombre.setText("");
         txtPrecio.setText("");
@@ -750,46 +765,47 @@ public class VentanaAdmin extends JFrame {
         productoSeleccionadoId = null;
         refrescarTarjetas();
     }
-
+ 
     private void mostrarSeleccion() {
         JOptionPane.showMessageDialog(this, "Selecciona una tarjeta de producto.", "Falta selección",
                 JOptionPane.WARNING_MESSAGE);
     }
-
+ 
     private void mostrarDatosInvalidos() {
         JOptionPane.showMessageDialog(this,
                 "Ingresa un nombre, un precio válido y una cantidad entera no negativa.",
                 "Datos inválidos", JOptionPane.WARNING_MESSAGE);
     }
-
+ 
     private static class PanelTarjetasProductos extends JPanel implements Scrollable {
         @Override
         public Dimension getPreferredScrollableViewportSize() {
             return new Dimension(720, 520);
         }
-
+ 
         @Override
         public int getScrollableUnitIncrement(Rectangle visibleRect, int orientation, int direction) {
             return 20;
         }
-
+ 
         @Override
         public int getScrollableBlockIncrement(Rectangle visibleRect, int orientation, int direction) {
             return Math.max(20, visibleRect.height - 20);
         }
-
+ 
         @Override
         public boolean getScrollableTracksViewportWidth() {
             return true;
         }
-
+ 
         @Override
         public boolean getScrollableTracksViewportHeight() {
             return false;
         }
     }
-
+ 
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> new VentanaAdmin().setVisible(true));
     }
 }
+ 

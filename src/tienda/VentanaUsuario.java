@@ -62,6 +62,9 @@ public class VentanaUsuario extends JFrame {
     private final JButton botonEnviarChat = new JButton("Enviar");
     private final StringBuilder historialChatGemini = new StringBuilder();
     private JDialog ventanaChat;
+    private Temporizador temporizador;
+    private JLabel lblcontador = new JLabel("--:--"); 
+    private JLabel lblcontadorCarrito = new JLabel("--:--");
 
     public VentanaUsuario() {
         this(null);
@@ -203,6 +206,11 @@ public class VentanaUsuario extends JFrame {
         tarjetas.show(paneles, "catalogo");
         getRootPane().setDefaultButton(null);
         actualizarVista();
+        if (temporizador != null) {
+            temporizador.detener();
+        }
+        temporizador = new Temporizador(carrito, inventario, 5 , lblcontador, this); //cambiar el numero es para cambiar el coso
+        temporizador.setLabelCarrito(lblcontadorCarrito);
         paneles.revalidate();
         paneles.repaint();
     }
@@ -314,6 +322,8 @@ public class VentanaUsuario extends JFrame {
             estilizarBoton(btnCerrarSesion, DORADO, TEXTO);
             btnCerrarSesion.addActionListener(e -> {
                 usuario = null;
+                carrito.vaciarCarrito();
+                inventario.guardarEnArchivo();
                 carrito = new Carrito();
                 mostrarCatalogo();
             });
@@ -776,7 +786,8 @@ private JPanel crearTarjeta(Producto producto) {
         estilizarBoton(botonCarrito, DORADO, TEXTO);
         botonCarrito.addActionListener(e -> mostrarCarrito());
         panel.add(botonCarrito);
-
+        panel.add(new JLabel("Reserva:"));
+        panel.add(lblcontador);
         return panel;
      }
     
@@ -845,6 +856,8 @@ private JPanel crearTarjeta(Producto producto) {
                 BorderFactory.createEmptyBorder(8, 12, 8, 12)));
         encabezado.add(titulos, BorderLayout.CENTER);
         encabezado.add(cantidadProductosCarrito, BorderLayout.EAST);
+        lblcontadorCarrito.setForeground(MARFIL);            
+        encabezado.add(lblcontadorCarrito, BorderLayout.SOUTH);
         panel.add(encabezado, BorderLayout.NORTH);
 
         JPanel centro = new JPanel(new BorderLayout());
@@ -990,6 +1003,8 @@ private JPanel crearTarjeta(Producto producto) {
                 return;
             }
             carrito.vaciarCarrito();
+            inventario.guardarEnArchivo();
+            temporizador.reiniciar();
             campoCupon.setText("");
             actualizarVista();
         });
@@ -1006,6 +1021,7 @@ private JPanel crearTarjeta(Producto producto) {
             }
             carrito.quitarUnidad(tablaCarrito.convertRowIndexToModel(filaSeleccionada));
             inventario.guardarEnArchivo();
+            temporizador.reiniciar();
             actualizarVista();
         });
         pie.add(botonQuitarUnidadCarrito);
@@ -1075,6 +1091,7 @@ private JPanel crearTarjeta(Producto producto) {
             agregadas++;
         }
         inventario.guardarEnArchivo(); // persiste la reserva
+        temporizador.reiniciar();
 
         if (agregadas == 0) {
             JOptionPane.showMessageDialog(this, "No hay stock suficiente para ese producto.", "Stock insuficiente",
@@ -1176,6 +1193,7 @@ private JPanel crearTarjeta(Producto producto) {
         }
         carrito.finalizarCompra();
         inventario.guardarEnArchivo();
+        temporizador.reiniciar();
         campoCupon.setText("");
         
         JOptionPane.showMessageDialog(ventanaActiva(), "Tu ticket de venta es el número: " + numeroTicket,
