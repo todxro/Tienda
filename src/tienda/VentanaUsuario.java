@@ -3,8 +3,6 @@ package tienda;
 import java.awt.*;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
-import java.awt.event.WindowAdapter;
-import java.awt.event.WindowEvent;
 import java.io.IOException;
 import java.text.NumberFormat;
 import java.util.Locale;
@@ -36,8 +34,7 @@ public class VentanaUsuario extends JFrame {
     private final GestorUsuarios gestorUsuarios;
     private final CardLayout tarjetas = new CardLayout();
     private final JPanel paneles = new JPanel(tarjetas);
-    private JFrame ventanaCarrito;
-
+    private JPanel panelCarrito;
     // componentes de la interfaz
     private JPanel grillaCatalogo;
     private JTable tablaCarrito;
@@ -792,40 +789,26 @@ private JPanel crearTarjeta(Producto producto) {
      }
     
     private void mostrarCarrito() {
-        if (ventanaCarrito != null && ventanaCarrito.isDisplayable()) {
-            ventanaCarrito.setVisible(true);
-            ventanaCarrito.toFront();
-            return;
-        }
-        ventanaCarrito = new JFrame("Mi carrito - Tienda");
-        ventanaCarrito.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
-        ventanaCarrito.setContentPane(crearPanelCarrito());
-        ventanaCarrito.setSize(getSize());
-        ventanaCarrito.setMinimumSize(new Dimension(620, 500));
-        ventanaCarrito.setLocationRelativeTo(this);
-        ventanaCarrito.setExtendedState(getExtendedState());
-        ventanaCarrito.addWindowListener(new WindowAdapter() {
-            @Override
-            public void windowClosing(WindowEvent e) {
-                volverAlCatalogo();
-            }
-        });
+        if (panelCarrito != null) {
+            paneles.remove(panelCarrito);
+    }
+        panelCarrito = crearPanelCarrito();
+        paneles.add(panelCarrito, "carrito");
+        setTitle("Mi carrito - Tienda");
         actualizarVista();
-        setVisible(false);
-        ventanaCarrito.setVisible(true);
+        tarjetas.show(paneles, "carrito");
+        paneles.revalidate();
+        paneles.repaint();
     }
 
     private void volverAlCatalogo() {
-        if (ventanaCarrito != null) {
-            ventanaCarrito.dispose();
-            ventanaCarrito = null;
-        }
-        setVisible(true);
-        toFront();
+        setTitle(usuario == null ? "Catálogo - Invitado" : "Catálogo - " + usuario.getNombre());
+        actualizarVista();
+        tarjetas.show(paneles, "catalogo");
     }
 
     private Component ventanaActiva() {
-        return ventanaCarrito == null ? this : ventanaCarrito;
+        return this;
     }
 
     private JPanel crearPanelCarrito() {

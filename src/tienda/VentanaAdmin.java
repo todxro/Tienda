@@ -7,6 +7,7 @@ import java.awt.Component;
 import java.awt.Container;
 import java.awt.Cursor;
 import java.awt.Dimension;
+import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
@@ -164,9 +165,36 @@ public class VentanaAdmin extends JFrame {
         JButton btnAvanzarEstado = new JButton("Avanzar estado");
         estilizarBotonStock(btnAvanzarEstado);
         btnAvanzarEstado.addActionListener(e -> avanzarEstadoSeleccionado(tablaVentas));
-        JPanel barraVentas = new JPanel(new BorderLayout());
+        JButton btnCancelarVenta = new JButton("Cancelar venta");
+        estilizarBotonStock(btnCancelarVenta);
+        btnCancelarVenta.addActionListener(e -> {
+            int fila = tablaVentas.getSelectedRow();
+            if (fila < 0) {
+                JOptionPane.showMessageDialog(this, "Selecciona una venta de la tabla.", "Cancelar venta",
+                        JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+            int filaModelo = tablaVentas.convertRowIndexToModel(fila);
+            String ticket = String.valueOf(modeloVentas.getValueAt(filaModelo, 0));
+            String fecha = String.valueOf(modeloVentas.getValueAt(filaModelo, 1));
+            try {
+                if (!new GestorVentas().eliminarVenta(ticket, fecha)) {
+                    JOptionPane.showMessageDialog(this, "No se pudo cancelar la venta.",
+                            "Error al cancelar", JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
+                mostrarVentas();
+                JOptionPane.showMessageDialog(this, "La venta ha sido cancelada y el stock devuelto.",
+                        "Venta cancelada", JOptionPane.INFORMATION_MESSAGE);
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(this, "No se pudo cancelar la venta: " + ex.getMessage(),
+                        "Error al cancelar", JOptionPane.ERROR_MESSAGE);
+            }
+        });
+        JPanel barraVentas = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         barraVentas.setBackground(FONDO);
-        barraVentas.add(btnAvanzarEstado, BorderLayout.EAST);
+        barraVentas.add(btnAvanzarEstado);
+        barraVentas.add(btnCancelarVenta);
         panelVentas.add(barraVentas, BorderLayout.SOUTH);
  
         modeloCupones = new DefaultTableModel(
@@ -349,7 +377,7 @@ public class VentanaAdmin extends JFrame {
                     JOptionPane.WARNING_MESSAGE);
             return;
         }
- 
+    
         // la tabla se puede ordenar, por eso se convierte la fila a la del modelo
         int filaModelo = tabla.convertRowIndexToModel(fila);
         String ticket = String.valueOf(modeloVentas.getValueAt(filaModelo, 0));
@@ -369,7 +397,7 @@ public class VentanaAdmin extends JFrame {
         }
         mostrarVentas();
     }
- 
+    
     private void mostrarCupones() {
         try {
             modeloCupones.setRowCount(0);

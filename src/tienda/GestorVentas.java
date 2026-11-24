@@ -207,4 +207,36 @@ public class GestorVentas {
         campos.add(campoActual.toString().trim());
         return campos.toArray(new String[0]);
     }
+
+    public boolean eliminarVenta(String ticket, String fecha) throws IOException {
+        File archivo = new File(RUTA_ARCHIVO);
+        if (!archivo.exists()) {
+            return false;
+        }
+
+        List<String> lineas = Files.readAllLines(archivo.toPath(), StandardCharsets.UTF_8);
+        boolean eliminada = false;
+
+        for (int i = 1; i < lineas.size(); i++) {
+            String[] datos = parsearLineaCSV(lineas.get(i));
+            if (datos.length < 9 || !datos[0].equals(ticket) || !datos[1].equals(fecha)) {
+                continue;
+            }
+            lineas.remove(i);
+            eliminada = true;
+            break;
+        }
+
+        if (eliminada) {
+            Files.write(archivo.toPath(), lineas, StandardCharsets.UTF_8);
+        }
+        return eliminada;
+    } 
+    public void devolverStockCarrito(Carrito carrito) { //tener que hacer denuevo porque con la id esta dificil encontrar la wea xd
+        for (int i = 0; i < carrito.getProductos().size(); i++) {
+            Producto producto = carrito.getProductos().get(i);
+            int cantidad = carrito.getCantidad(producto.getId());
+            producto.setStock(producto.getStock() + cantidad);
+        }
+    }
 }
