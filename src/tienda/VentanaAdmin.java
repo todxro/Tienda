@@ -40,10 +40,12 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.JTextField;
+import javax.swing.RowFilter;
 import javax.swing.Scrollable;
 import javax.swing.SwingUtilities;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.table.TableRowSorter;
  
  
 // Reúne las vistas y acciones con las que administración mantiene la tienda.
@@ -146,14 +148,15 @@ public class VentanaAdmin extends JFrame {
         // Las vistas de stock y ventas comparten el espacio central de la ventana.
         modeloVentas = new DefaultTableModel(
                 new Object[] { "Ticket", "Fecha", "RUT", "Cliente", "Correo", "Productos", "Subtotal", "IVA",
-                        "Total", "Estado" }, 0) {
+                        "Total", "Cupon", "Descuento", "Estado" }, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
                 return false;
             }
         };
         JTable tablaVentas = new JTable(modeloVentas);
-        tablaVentas.setAutoCreateRowSorter(true);
+        TableRowSorter<DefaultTableModel> ordenadorVentas = new TableRowSorter<>(modeloVentas);
+        tablaVentas.setRowSorter(ordenadorVentas);        
         tablaVentas.setRowHeight(28);
         tablaVentas.getTableHeader().setFont(new Font(Font.SANS_SERIF, Font.BOLD, 14));
         tablaVentas.getTableHeader().setBackground(AZUL_MARINO);
@@ -177,6 +180,29 @@ public class VentanaAdmin extends JFrame {
         JPanel barraVentas = new JPanel(new BorderLayout());
         barraVentas.setBackground(FONDO);
         barraVentas.add(btnAvanzarEstado, BorderLayout.EAST);
+        
+        // filtro para ver solo los pedidos de un estado
+        JComboBox<String> filtroEstado = new JComboBox<>();
+        filtroEstado.addItem("Todos");
+        for (EstadoPedido estado : EstadoPedido.values()) {
+            filtroEstado.addItem(estado.getTexto());
+        }
+        filtroEstado.addActionListener(e -> {
+            String elegido = (String) filtroEstado.getSelectedItem();
+            if (elegido.equals("Todos")) {
+                ordenadorVentas.setRowFilter(null);
+            } else {
+                // ^ y $ hacen que el estado coincida completo, columna 11 es Estado
+                ordenadorVentas.setRowFilter(RowFilter.regexFilter("^" + elegido + "$", 11));
+            }
+        });
+        JLabel etiquetaFiltro = new JLabel("Filtrar por estado:");
+        etiquetaFiltro.setForeground(TEXTO);
+        JPanel panelFiltro = new JPanel();
+        panelFiltro.setBackground(FONDO);
+        panelFiltro.add(etiquetaFiltro);
+        panelFiltro.add(filtroEstado);
+        barraVentas.add(panelFiltro, BorderLayout.WEST);
         panelVentas.add(barraVentas, BorderLayout.SOUTH);
  
         modeloCupones = new DefaultTableModel(
@@ -348,7 +374,7 @@ public class VentanaAdmin extends JFrame {
             for (String[] venta : new GestorVentas().obtenerTodasLasVentas()) {
                 modeloVentas.addRow(new Object[] {
                         venta[0], venta[1], venta[2], venta[3], venta[4], venta[5],
-                        "$" + venta[6], "$" + venta[7], "$" + venta[8],
+                        "$" + venta[6], "$" + venta[7], "$" + venta[8], venta[9], venta[9].isEmpty() ? "" : "$" + venta[10],
                         EstadoPedido.desdeTexto(venta[11]).getTexto()                
                         });
             }

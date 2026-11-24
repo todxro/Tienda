@@ -1181,7 +1181,9 @@ private JPanel crearTarjeta(Producto producto) {
             detalles.toString(),
             subtotalNeto,
             iva,
-            total
+            total,
+            cuponCompra == null ? "" : cuponCompra.getCodigo(),
+            descuento
         );
 
         // Guarda la venta antes de consumir el cupón para no descontar usos si falla el registro.
