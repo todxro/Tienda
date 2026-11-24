@@ -3,8 +3,8 @@ package tienda;
 // estados por los que pasa un pedido, en este orden
 public enum EstadoPedido {
     PENDIENTE("Pendiente"),
-    PREPARANDO("Preparando"),
-    ENVIADO("Enviado"),
+    PREPARANDO("En preparación"),
+    ENVIADO("Despachado"),
     ENTREGADO("Entregado");
 
     private final String texto;
