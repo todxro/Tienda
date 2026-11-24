@@ -79,6 +79,43 @@ public class Inventario {
         return null;
     }
 
+    // Actualiza la copia local del catálogo con datos recibidos desde ADMIN.
+    public synchronized int aplicarActualizacionRemota(Producto recibido) {
+        if (recibido == null || recibido.getId() == null || recibido.getId().isBlank()
+                || recibido.getNombre() == null || recibido.getPrecio() < 0 || recibido.getStock() < 0) {
+            throw new IllegalArgumentException("Los datos del producto recibido no son válidos.");
+        }
+
+        Producto actual = null;
+        for (Producto producto : listaProductos) {
+            if (producto.getId().equalsIgnoreCase(recibido.getId())) {
+                actual = producto;
+                break;
+            }
+        }
+
+        int stockAnterior = actual == null ? -1 : actual.getStock();
+        if (actual == null) {
+            listaProductos.add(new Producto(recibido.getId(), recibido.getNombre(),
+                    recibido.getPrecio(), recibido.getStock(), recibido.getCategoria()));
+        } else {
+            actual.setNombre(recibido.getNombre());
+            actual.setPrecio(recibido.getPrecio());
+            actual.setStock(recibido.getStock());
+            actual.setCategoria(recibido.getCategoria());
+        }
+        guardarEnArchivo();
+        return stockAnterior;
+    }
+
+    public synchronized boolean eliminarProductoRemoto(String id) {
+        boolean eliminado = listaProductos.removeIf(producto -> producto.getId().equalsIgnoreCase(id));
+        if (eliminado) {
+            guardarEnArchivo();
+        }
+        return eliminado;
+    }
+
     public ArrayList<Producto> getListaProductos() {
         // entrega la lista de productos
         return listaProductos;

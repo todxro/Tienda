@@ -20,6 +20,7 @@ import javax.swing.text.DocumentFilter;
 // crearPanelCatalogo, crearTarjeta, consultarProducto, mostrarVentanaChat, mostrarCuenta,
 // mostrarCarrito, agregarAlCarrito, comprarProductos y actualizarVista.
 public class VentanaUsuario extends JFrame {
+    private static final String IP_ADMIN = "192.168."; //poner ip no olvidar ._.
     private static final Color AZUL        = new Color(34, 96, 176);
     private static final Color AZUL_MARINO = new Color(18, 67, 121);
     private static final Color NARANJA     = new Color(244, 132, 54);
@@ -63,6 +64,7 @@ public class VentanaUsuario extends JFrame {
     private final StringBuilder historialChatGemini = new StringBuilder();
     private JDialog ventanaChat;
     private Temporizador temporizador;
+    private ClienteTiendaSocket clienteSocket;
     private JLabel lblcontador = new JLabel("--:--"); 
     private JLabel lblcontadorCarrito = new JLabel("--:--");
 
@@ -79,6 +81,19 @@ public class VentanaUsuario extends JFrame {
         setTitle("Tienda");
         setSize(1000, 650);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowOpened(WindowEvent e) {
+                conectarConAdmin();
+            }
+
+            @Override
+            public void windowClosing(WindowEvent e) {
+                if (clienteSocket != null) {
+                    clienteSocket.close();
+                }
+            }
+        });
         setContentPane(paneles);
         // Las tarjetas permiten cambiar de sección dentro de la misma ventana.
         paneles.add(crearPanelLogin(), "login");
@@ -1351,6 +1366,114 @@ private JPanel crearTarjeta(Producto producto) {
             campoCupon.setText("");
         }
         actualizarVista();
+    }
+
+    private void conectarConAdmin() {
+        if (!esIpv4Valida(IP_ADMIN)) {
+            JOptionPane.showMessageDialog(this,
+                    "Completa la IPv4 del equipo ADMIN en la constante IP_ADMIN de VentanaUsuario.",
+                    "Falta configurar la IP de ADMIN", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        ClienteTiendaSocket[] referenciaCliente = new ClienteTiendaSocket[1];
+        ClienteTiendaSocket nuevoCliente = new ClienteTiendaSocket(new ClienteTiendaSocket.Escucha() {
+            private boolean sincronizacionInicial = true;
+
+            @Override
+            public void alConectar() {
+                SwingUtilities.invokeLater(() -> {
+                    sincronizacionInicial = false;
+                });
+            }
+
+            @Override
+            public void alActualizarProducto(Producto producto) {
+                SwingUtilities.invokeLater(() -> {
+                    int stockAnterior = inventario.aplicarActualizacionRemota(producto);
+                    actualizarVista();
+                    if (!sincronizacionInicial && stockAnterior == 0 && producto.getStock() > 0) {
+                        JOptionPane.showMessageDialog(VentanaUsuario.this,
+                                "Hay stock disponible de " + producto.getNombre() + ".",
+                                "Reposición disponible", JOptionPane.INFORMATION_MESSAGE);
+                    }
+                });
+            }
+
+            @Override
+            public void alEliminarProducto(String idProducto) {
+                SwingUtilities.invokeLater(() -> {
+                    inventario.eliminarProductoRemoto(idProducto);
+                    actualizarVista();
+                });
+            }
+
+            @Override
+            public void alDesconectar(IOException error) {
+                SwingUtilities.invokeLater(() -> {
+                    if (clienteSocket == referenciaCliente[0]) {
+                        clienteSocket = null;
+                        JOptionPane.showMessageDialog(VentanaUsuario.this,
+                                "Se perdió la conexión con ADMIN: " + error.getMessage(),
+                                "Conexión interrumpida", JOptionPane.WARNING_MESSAGE);
+                    }
+                });
+            }
+        });
+        referenciaCliente[0] = nuevoCliente;
+        clienteSocket = nuevoCliente;
+
+        new SwingWorker<Void, Void>() {
+            @Override
+            protected Void doInBackground() throws Exception {
+                nuevoCliente.conectar(IP_ADMIN, ServidorTiendaSocket.PUERTO_PREDETERMINADO);
+                return null;
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    get();
+                } catch (InterruptedException ex) {
+                    Thread.currentThread().interrupt();
+                    nuevoCliente.close();
+                    if (clienteSocket == nuevoCliente) {
+                        clienteSocket = null;
+                    }
+                    JOptionPane.showMessageDialog(VentanaUsuario.this,
+                            "Se interrumpió la conexión con ADMIN.",
+                            "Error de conexión", JOptionPane.ERROR_MESSAGE);
+                } catch (java.util.concurrent.ExecutionException ex) {
+                    nuevoCliente.close();
+                    if (clienteSocket == nuevoCliente) {
+                        clienteSocket = null;
+                    }
+                    Throwable causa = ex.getCause();
+                    String detalle = causa == null || causa.getMessage() == null
+                            ? ex.getMessage() : causa.getMessage();
+                    JOptionPane.showMessageDialog(VentanaUsuario.this,
+                            "No se pudo conectar con ADMIN: " + detalle,
+                            "Error de conexión", JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        }.execute();
+    }
+
+    private static boolean esIpv4Valida(String direccion) {
+        String[] partes = direccion.split("\\.", -1);
+        if (partes.length != 4) {
+            return false;
+        }
+        for (String parte : partes) {
+            if (parte.isEmpty() || !parte.matches("\\d{1,3}")) {
+                return false;
+            }
+            int octeto = Integer.parseInt(parte);
+            if (octeto > 255) {
+                return false;
+            }
+        }
+        return true;
     }
 
 
