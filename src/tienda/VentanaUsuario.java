@@ -59,6 +59,10 @@ public class VentanaUsuario extends JFrame {
     private final JButton botonEnviarChat = new JButton("Enviar");
     private final StringBuilder historialChatGemini = new StringBuilder();
     private JDialog ventanaChat;
+    private volatile Socket socketChat;
+    private volatile PrintWriter salidaChat;
+    private volatile boolean clienteChatCerrado;
+    private volatile boolean chatConectando;
     private Temporizador temporizador;
     private JLabel lblcontador = new JLabel("--:--"); 
     private JLabel lblcontadorCarrito = new JLabel("--:--");
@@ -988,7 +992,6 @@ private JPanel crearTarjeta(Producto producto) {
             carrito.vaciarCarrito();
             inventario.guardarEnArchivo();
             temporizador.reiniciar();
-            campoCupon.setText("");
             actualizarVista();
         });
         pie.add(botonVaciarCarrito);
@@ -1177,7 +1180,6 @@ private JPanel crearTarjeta(Producto producto) {
         carrito.finalizarCompra();
         inventario.guardarEnArchivo();
         temporizador.reiniciar();
-        campoCupon.setText("");
         
         JOptionPane.showMessageDialog(ventanaActiva(), "Tu ticket de venta es el número: " + numeroTicket,
                 "Ticket de venta",
