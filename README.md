@@ -78,3 +78,15 @@ java -cp bin tienda.VentanaAdmin
 ```
 
 En VS Code puedes seleccionar **Tienda - Cliente** o **Tienda - Administrador** en las configuraciones de ejecución.
+
+### Sincronización de catálogo por sockets
+
+El panel ADMIN inicia un servidor TCP en el puerto `25565` y atiende a un cliente a la vez.
+El cliente intenta conectarse automáticamente al iniciar. Antes de compilar, completa la
+constante `IP_ADMIN` en `VentanaUsuario.java` con la IPv4 del equipo ADMIN, por ejemplo
+`192.168.1.20`. El ADMIN publica altas, cambios y eliminaciones del catálogo, y el cliente
+recibe las reposiciones de stock mientras permanece conectado.
+Para equipos distintos, permite el puerto TCP `25565` en el firewall del equipo ADMIN.
+
+Esta primera integración sincroniza el catálogo; las reservas, compras y estados de pedidos
+todavía se guardan localmente y no se coordinan entre equipos.

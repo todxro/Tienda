@@ -18,6 +18,8 @@ import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.io.File;
 import java.io.IOException;
 import java.time.LocalDate;
@@ -74,11 +76,19 @@ public class VentanaAdmin extends JFrame {
     private final JPanel panelVistas;
     private final DefaultTableModel modeloVentas;
     private final DefaultTableModel modeloCupones;
+    private final ServidorTiendaSocket servidorSocket;
  
     public VentanaAdmin() {
         inventario = new Inventario();
+        servidorSocket = new ServidorTiendaSocket(inventario);
         setTitle("Panel Administrador - Tienda");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent e) {
+                servidorSocket.close();
+            }
+        });
         getContentPane().setBackground(FONDO);
         setLayout(new BorderLayout(14, 14));
  
@@ -269,6 +279,16 @@ public class VentanaAdmin extends JFrame {
  
         refrescarTarjetas();
         setExtendedState(JFrame.MAXIMIZED_BOTH);
+        try {
+            servidorSocket.iniciar();
+            System.out.println("Servidor de tienda escuchando en el puerto "
+                    + servidorSocket.getPuerto() + ".");
+        } catch (IOException ex) {
+            JOptionPane.showMessageDialog(this,
+                    "No se pudo iniciar el servidor en el puerto " + servidorSocket.getPuerto()
+                            + ": " + ex.getMessage(),
+                    "Error al iniciar servidor", JOptionPane.ERROR_MESSAGE);
+        }
     }
  
     private void seleccionarImagenProducto() {
@@ -541,6 +561,7 @@ public class VentanaAdmin extends JFrame {
  
             inventario.agregarProducto(new Producto(inventario.generarNuevoId(), nombre, precio, stock,
                     categoriaIngresada()));
+            servidorSocket.publicarInventario();
             actualizarVista();
             limpiarCampos();
         } catch (IllegalArgumentException ex) {
@@ -563,6 +584,7 @@ public class VentanaAdmin extends JFrame {
             if (!inventario.actualizarProducto(id, nombre, precio, stock, categoriaIngresada())) {
                 throw new IllegalArgumentException();
             }
+            servidorSocket.publicarInventario();
             actualizarVista();
             limpiarCampos();
         } catch (IllegalArgumentException ex) {
@@ -582,6 +604,7 @@ public class VentanaAdmin extends JFrame {
                 "Confirmar borrado", JOptionPane.YES_NO_OPTION);
         if (respuesta == JOptionPane.YES_OPTION) {
             inventario.eliminarProducto(id);
+            servidorSocket.publicarInventario();
             actualizarVista();
             limpiarCampos();
         }
