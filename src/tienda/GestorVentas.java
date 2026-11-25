@@ -14,7 +14,7 @@ import java.util.List;
 // Guarda las ventas y consulta el historial persistido en ventas.csv.
 public class GestorVentas {
     private static final String RUTA_ARCHIVO = "ventas.csv";
-    private static final String ENCABEZADO = "numeroTicket,fecha,rutCliente,nombreCliente,correoCliente,detalleProductos,subtotal,iva,total,cupon,descuento,estado";    
+    private static final String ENCABEZADO = "numeroTicket,fecha,rutCliente,nombreCliente,correoCliente,detalleProductos,subtotal,iva,total,cupon,descuento,estado,costoEnvio,modalidadEntrega,direccionEntrega";    
     public void guardarVenta(Venta venta) throws IOException {
         File archivo = new File(RUTA_ARCHIVO);
         prepararArchivo(archivo);
@@ -136,15 +136,11 @@ public class GestorVentas {
                     throw new IOException("La venta en la línea " + numeroLinea + " está incompleta.");
                 }
                 // las ventas antiguas no tienen cupon, descuento ni estado
-                String[] completa = new String[12];
-                for (int i = 0; i < completa.length; i++) {
-                    completa[i] = i < datos.length ? datos[i] : "";
-                }
-                ventas.add(completa);            
-            }
+                ventas.add(completarCamposVenta(datos));
         }
-
+    }
         return ventas;
+    
     }
     
     // avanza un paso el estado de una venta y reescribe el archivo
@@ -162,20 +158,15 @@ public class GestorVentas {
                 continue;
             }
 
-            String estadoActual = datos.length >= 12 ? datos[11] : "";
-            EstadoPedido siguiente = EstadoPedido.desdeTexto(estadoActual).siguiente();
+            String[] completa = completarCamposVenta(datos);
+            EstadoPedido siguiente = EstadoPedido.desdeTexto(completa[11]).siguiente();
             if (siguiente == null) {
                 return null;
             }
 
-            // deja la linea sin el estado viejo, o con cupon y descuento vacios si es una venta antigua
-            String base = lineas.get(i);
-            if (datos.length >= 12) {
-                base = base.substring(0, base.lastIndexOf(','));
-            } else if (datos.length == 9) {
-                base = base + ",,0";
-            }
-            lineas.set(i, base + "," + siguiente.name());
+            
+            completa[11] = siguiente.name();
+            lineas.set(i, reconstruirLineaCSV(completa));
             Files.write(archivo.toPath(), lineas, StandardCharsets.UTF_8);
             return siguiente;
         }
@@ -206,5 +197,44 @@ public class GestorVentas {
         }
         campos.add(campoActual.toString().trim());
         return campos.toArray(new String[0]);
+    }
+    private String[] completarCamposVenta(String[] datos) {
+        String[] completa = new String[15];
+        for (int i = 0; i < completa.length; i++) {
+            completa[i] = i < datos.length ? datos[i] : "";
+        }
+        if (completa[10].isEmpty()) {
+            completa[10] = "0";
+        }
+        if (completa[12].isEmpty()) {
+            completa[12] = "0";
+        }
+        if (completa[13].isEmpty()) {
+            completa[13] = Despacho.RETIRO_TIENDA;
+        }
+        if (completa[14].isEmpty()) {
+            completa[14] = "Retiro en local";
+        }
+        return completa;
+    }
+    private String reconstruirLineaCSV(String[] campos) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < campos.length; i++) {
+            if (i > 0) {
+                sb.append(',');
+            }
+            sb.append(escaparCSV(campos[i]));
+        }
+        return sb.toString();
+    }
+
+    private String escaparCSV(String valor) {
+        if (valor == null) {
+            return "";
+        }
+        if (valor.contains(",") || valor.contains("\"") || valor.contains("\n") || valor.contains("\r")) {
+            return "\"" + valor.replace("\"", "\"\"") + "\"";
+        }
+        return valor;
     }
 }
