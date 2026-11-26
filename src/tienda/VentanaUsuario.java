@@ -7,6 +7,9 @@ import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.IOException;
 import java.text.NumberFormat;
+import java.time.DayOfWeek;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.Locale;
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
@@ -67,6 +70,14 @@ public class VentanaUsuario extends JFrame {
     private ClienteTiendaSocket clienteSocket;
     private JLabel lblcontador = new JLabel("--:--"); 
     private JLabel lblcontadorCarrito = new JLabel("--:--");
+    private final GestorEnvios gestorEnvios = new GestorEnvios();
+    private JComboBox<String> comboModalidadEntrega;
+    private JComboBox<String> comboRegionEnvio;
+    private JTextField campoComunaEnvio;
+    private JTextField campoDireccionEnvio;
+    private JPanel panelDatosDespacho;
+    private JLabel labelPlazoEnvio;
+    private JLabel valorEnvioCarrito;
 
     public VentanaUsuario() {
         this(null);
@@ -808,6 +819,8 @@ private JPanel crearTarjeta(Producto producto) {
     
     private void mostrarCarrito() {
         if (ventanaCarrito != null && ventanaCarrito.isDisplayable()) {
+            recargarRegionesEnvio();
+            actualizarVista();
             ventanaCarrito.setVisible(true);
             ventanaCarrito.toFront();
             return;
@@ -940,6 +953,62 @@ private JPanel crearTarjeta(Producto producto) {
 
         JPanel inferior = new JPanel(new BorderLayout(12, 14));
         inferior.setBackground(FONDO);
+
+        JPanel zonaMedios = new JPanel(new GridLayout(1, 2, 14, 0));
+        zonaMedios.setBackground(FONDO);
+
+        JPanel seccionEntrega = new JPanel(new BorderLayout(8, 8));
+        seccionEntrega.setBackground(MARFIL);
+        seccionEntrega.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(215, 203, 184)),
+                BorderFactory.createEmptyBorder(10, 14, 10, 14)));
+
+        JPanel filaModalidad = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+        filaModalidad.setBackground(MARFIL);
+        JLabel tituloEntrega = new JLabel("Entrega:");
+        tituloEntrega.setForeground(TEXTO);
+        tituloEntrega.setFont(new Font("SansSerif", Font.BOLD, 13));
+        comboModalidadEntrega = new JComboBox<>(new String[] { "Retiro en tienda", "Despacho a domicilio" });
+        filaModalidad.add(tituloEntrega);
+        filaModalidad.add(comboModalidadEntrega);
+
+        panelDatosDespacho = new JPanel(new GridLayout(3, 2, 8, 6));
+        panelDatosDespacho.setBackground(MARFIL);
+        comboRegionEnvio = new JComboBox<>();
+        campoComunaEnvio = new JTextField();
+        campoDireccionEnvio = new JTextField();
+
+        JLabel lblRegion = new JLabel("Región:");
+        JLabel lblComuna = new JLabel("Comuna:");
+        JLabel lblDireccion = new JLabel("Dirección:");
+        for (JLabel lbl : new JLabel[] { lblRegion, lblComuna, lblDireccion }) {
+            lbl.setForeground(TEXTO_CLARO);
+            lbl.setFont(new Font("SansSerif", Font.PLAIN, 13));
+        }
+        panelDatosDespacho.add(lblRegion);
+        panelDatosDespacho.add(comboRegionEnvio);
+        panelDatosDespacho.add(lblComuna);
+        panelDatosDespacho.add(campoComunaEnvio);
+        panelDatosDespacho.add(lblDireccion);
+        panelDatosDespacho.add(campoDireccionEnvio);
+        panelDatosDespacho.setVisible(false);
+
+        labelPlazoEnvio = new JLabel("Retiro disponible hoy en tienda.");
+        labelPlazoEnvio.setForeground(AZUL_MARINO);
+        labelPlazoEnvio.setFont(new Font("SansSerif", Font.ITALIC, 12));
+
+        comboModalidadEntrega.addActionListener(e -> {
+            boolean esDespacho = "Despacho a domicilio".equals(comboModalidadEntrega.getSelectedItem());
+            panelDatosDespacho.setVisible(esDespacho);
+            actualizarVista();
+        });
+        comboRegionEnvio.addActionListener(e -> actualizarVista());
+
+        seccionEntrega.add(filaModalidad, BorderLayout.NORTH);
+        seccionEntrega.add(panelDatosDespacho, BorderLayout.CENTER);
+        seccionEntrega.add(labelPlazoEnvio, BorderLayout.SOUTH);
+
+        // Panel derecho: cupón y resumen de precios
         JPanel detalleCompra = new JPanel(new BorderLayout(8, 8));
         detalleCompra.setBackground(FONDO);
         JPanel seccionCupon = new JPanel(new BorderLayout(8, 6));
@@ -951,7 +1020,7 @@ private JPanel crearTarjeta(Producto producto) {
         tituloCupon.setForeground(TEXTO);
         tituloCupon.setFont(new Font("SansSerif", Font.BOLD, 13));
         Cupon cuponActual = carrito.getCupon();
-        campoCupon = new JTextField(cuponActual == null ? "" : cuponActual.getCodigo(), 16);
+        campoCupon = new JTextField(cuponActual == null ? "" : cuponActual.getCodigo(), 14);
         JButton botonAplicarCupon = new JButton("Aplicar");
         estilizarBoton(botonAplicarCupon, AZUL_MARINO, MARFIL);
         botonAplicarCupon.addActionListener(e -> aplicarCupon());
@@ -966,24 +1035,26 @@ private JPanel crearTarjeta(Producto producto) {
         seccionCupon.add(tituloCupon, BorderLayout.NORTH);
         seccionCupon.add(controlesCupon, BorderLayout.CENTER);
 
-        JPanel resumen = new JPanel(new GridLayout(4, 2, 12, 7));
+        JPanel resumen = new JPanel(new GridLayout(5, 2, 12, 6));
         resumen.setBackground(MARFIL);
         resumen.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(new Color(215, 203, 184)),
-                BorderFactory.createEmptyBorder(12, 16, 12, 16)));
+                BorderFactory.createEmptyBorder(10, 16, 10, 16)));
         JLabel labelSubtotal = new JLabel("Subtotal");
         JLabel labelDescuento = new JLabel("Descuento");
+        JLabel labelEnvio = new JLabel("Envío");
         JLabel labelIVA = new JLabel("IVA (19%)");
         JLabel labelTotalTexto = new JLabel("Total");
         valorSubtotalCarrito = new JLabel("$0", SwingConstants.RIGHT);
         valorDescuentoCarrito = new JLabel("$0", SwingConstants.RIGHT);
+        valorEnvioCarrito = new JLabel("$0", SwingConstants.RIGHT);
         valorIVACarrito = new JLabel("$0", SwingConstants.RIGHT);
         labelTotal = new JLabel("$0", SwingConstants.RIGHT);
-        for (JLabel etiqueta : new JLabel[] {labelSubtotal, labelDescuento, labelIVA}) {
+        for (JLabel etiqueta : new JLabel[] {labelSubtotal, labelDescuento, labelEnvio, labelIVA}) {
             etiqueta.setForeground(TEXTO_CLARO);
             etiqueta.setFont(new Font("SansSerif", Font.PLAIN, 14));
         }
-        for (JLabel valor : new JLabel[] {valorSubtotalCarrito, valorDescuentoCarrito, valorIVACarrito}) {
+        for (JLabel valor : new JLabel[] {valorSubtotalCarrito, valorDescuentoCarrito, valorEnvioCarrito, valorIVACarrito}) {
             valor.setForeground(TEXTO);
             valor.setFont(new Font("SansSerif", Font.PLAIN, 14));
         }
@@ -995,13 +1066,18 @@ private JPanel crearTarjeta(Producto producto) {
         resumen.add(valorSubtotalCarrito);
         resumen.add(labelDescuento);
         resumen.add(valorDescuentoCarrito);
+        resumen.add(labelEnvio);
+        resumen.add(valorEnvioCarrito);
         resumen.add(labelIVA);
         resumen.add(valorIVACarrito);
         resumen.add(labelTotalTexto);
         resumen.add(labelTotal);
         detalleCompra.add(seccionCupon, BorderLayout.NORTH);
         detalleCompra.add(resumen, BorderLayout.CENTER);
-        inferior.add(detalleCompra, BorderLayout.CENTER);
+
+        zonaMedios.add(seccionEntrega);
+        zonaMedios.add(detalleCompra);
+        inferior.add(zonaMedios, BorderLayout.CENTER);
 
         JPanel pie = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         pie.setBackground(FONDO);
@@ -1047,6 +1123,7 @@ private JPanel crearTarjeta(Producto producto) {
         pie.add(botonComprarCarrito);
         inferior.add(pie, BorderLayout.SOUTH);
         panel.add(inferior, BorderLayout.SOUTH);
+        recargarRegionesEnvio();
         return panel;
     }
 
@@ -1149,11 +1226,33 @@ private JPanel crearTarjeta(Producto producto) {
             }
         }
 
-        double subtotal = carrito.calcularSubtotalCarrito();
+        String modalidad = comboModalidadEntrega == null
+                ? "Retiro en tienda" : comboModalidadEntrega.getSelectedItem().toString();
+        String direccionFinal = "Retiro en tienda";
+        if ("Despacho a domicilio".equals(modalidad)) {
+            TarifaEnvio tarifa = obtenerTarifaSeleccionada();
+            if (tarifa == null) {
+                JOptionPane.showMessageDialog(ventanaActiva(),
+                        "No hay regiones de envío configuradas.", "Envío no disponible",
+                        JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+            String comuna = campoComunaEnvio.getText().trim();
+            String calle = campoDireccionEnvio.getText().trim();
+            if (comuna.isEmpty() || calle.isEmpty()) {
+                JOptionPane.showMessageDialog(ventanaActiva(),
+                        "Ingresa la comuna y dirección para el despacho a domicilio.",
+                        "Falta dirección", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+            direccionFinal = (calle + ", " + comuna + " (" + tarifa.getRegion() + ")").replace(";", ",");
+        }
+
         double descuento = carrito.calcularDescuento();
         double subtotalNeto = carrito.calcularSubtotalNeto();
+        double costoEnvio = calcularCostoEnvioActual();
         double iva = carrito.calcularIVA();
-        double total = carrito.calcularTotal();
+        double total = carrito.calcularTotal() + costoEnvio;
 
         // construye el detalle 
         StringBuilder detalles = new StringBuilder();
@@ -1183,7 +1282,10 @@ private JPanel crearTarjeta(Producto producto) {
             iva,
             total,
             cuponCompra == null ? "" : cuponCompra.getCodigo(),
-            descuento
+            descuento,
+            costoEnvio,
+            modalidad,
+            direccionFinal
         );
 
         // Guarda la venta antes de consumir el cupón para no descontar usos si falla el registro.
@@ -1263,18 +1365,112 @@ private JPanel crearTarjeta(Producto producto) {
             }
         }
 
+        double costoEnvio = calcularCostoEnvioActual();
         if (valorSubtotalCarrito != null && valorDescuentoCarrito != null && valorIVACarrito != null) {
             valorSubtotalCarrito.setText(formatearPrecio(carrito.calcularSubtotalCarrito()));
             valorDescuentoCarrito.setText(formatearPrecio(carrito.calcularDescuento()));
+            if (valorEnvioCarrito != null) {
+                boolean esDespacho = comboModalidadEntrega != null
+                        && "Despacho a domicilio".equals(comboModalidadEntrega.getSelectedItem());
+                if (!esDespacho || carrito.getProductos().isEmpty()) {
+                    valorEnvioCarrito.setText("$0");
+                } else {
+                    valorEnvioCarrito.setText(costoEnvio == 0 ? "$0 (Gratis)" : formatearPrecio(costoEnvio));
+                }
+            }
             valorIVACarrito.setText(formatearPrecio(carrito.calcularIVA()));
         }
         if (labelTotal != null) {
-            labelTotal.setText(formatearPrecio(carrito.calcularTotal()));
+            labelTotal.setText(formatearPrecio(carrito.calcularTotal() + costoEnvio));
         }
+        actualizarInfoPlazoEnvio();
         if (contenidoCarrito != null && tarjetasCarrito != null) {
             tarjetasCarrito.show(contenidoCarrito,
                     carrito.getProductos().isEmpty() ? "vacio" : "productos");
         }
+    }
+
+    private void recargarRegionesEnvio() {
+        if (comboRegionEnvio == null) {
+            return;
+        }
+        gestorEnvios.cargar();
+        Object seleccionPrevia = comboRegionEnvio.getSelectedItem();
+        comboRegionEnvio.removeAllItems();
+        for (TarifaEnvio t : gestorEnvios.getTarifas()) {
+            comboRegionEnvio.addItem(t.getRegion());
+        }
+        if (seleccionPrevia != null) {
+            comboRegionEnvio.setSelectedItem(seleccionPrevia);
+        }
+    }
+
+    private TarifaEnvio obtenerTarifaSeleccionada() {
+        if (comboRegionEnvio == null || comboRegionEnvio.getSelectedItem() == null) {
+            return null;
+        }
+        String region = comboRegionEnvio.getSelectedItem().toString();
+        for (TarifaEnvio t : gestorEnvios.getTarifas()) {
+            if (t.getRegion().equalsIgnoreCase(region)) {
+                return t;
+            }
+        }
+        return null;
+    }
+
+    private double calcularCostoEnvioActual() {
+        if (carrito.getProductos().isEmpty() || comboModalidadEntrega == null
+                || !"Despacho a domicilio".equals(comboModalidadEntrega.getSelectedItem())) {
+            return 0.0;
+        }
+        TarifaEnvio tarifa = obtenerTarifaSeleccionada();
+        if (tarifa == null) {
+            return 0.0;
+        }
+        double minimoGratis = gestorEnvios.getMontoMinimoGratis();
+        if (minimoGratis > 0 && carrito.calcularSubtotalNeto() >= minimoGratis) {
+            return 0.0;
+        }
+        return tarifa.getCosto();
+    }
+
+    private void actualizarInfoPlazoEnvio() {
+        if (labelPlazoEnvio == null || comboModalidadEntrega == null) {
+            return;
+        }
+        if (!"Despacho a domicilio".equals(comboModalidadEntrega.getSelectedItem())) {
+            labelPlazoEnvio.setText("Retiro disponible hoy en tienda.");
+            return;
+        }
+        TarifaEnvio tarifa = obtenerTarifaSeleccionada();
+        if (tarifa == null) {
+            labelPlazoEnvio.setText("Sin regiones de envío disponibles.");
+            return;
+        }
+        LocalDate fechaEstimada = sumarDiasHabiles(LocalDate.now(), tarifa.getDiasHabiles());
+        String fechaTexto = fechaEstimada.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+        double minimoGratis = gestorEnvios.getMontoMinimoGratis();
+        String extraGratis = "";
+        if (minimoGratis > 0 && carrito.calcularSubtotalNeto() >= minimoGratis) {
+            extraGratis = " — ¡Envío GRATIS aplicado!";
+        } else if (minimoGratis > 0) {
+            extraGratis = " (Gratis desde " + formatearPrecio(minimoGratis) + ")";
+        }
+        labelPlazoEnvio.setText("Plazo: " + tarifa.getDiasHabiles()
+                + " días hábiles (aprox. " + fechaTexto + ")" + extraGratis);
+    }
+
+    private LocalDate sumarDiasHabiles(LocalDate inicio, int diasHabiles) {
+        LocalDate fecha = inicio;
+        int agregados = 0;
+        while (agregados < diasHabiles) {
+            fecha = fecha.plusDays(1);
+            DayOfWeek dia = fecha.getDayOfWeek();
+            if (dia != DayOfWeek.SATURDAY && dia != DayOfWeek.SUNDAY) {
+                agregados++;
+            }
+        }
+        return fecha;
     }
     private void mostrarVentanaDeseos() {
         if (usuario == null) {
@@ -1328,6 +1524,7 @@ private JPanel crearTarjeta(Producto producto) {
         panelBajo.add(btnMoverCarrito);
         ventanaDeseos.add(panelBajo, BorderLayout.SOUTH);
         ventanaDeseos.setVisible(true);
+        
     }
     private void aplicarCupon() {
         if (carrito.getProductos().isEmpty()) {
@@ -1358,6 +1555,7 @@ private JPanel crearTarjeta(Producto producto) {
             JOptionPane.showMessageDialog(ventanaActiva(), "No se pudieron cargar los cupones: " + ex.getMessage(),
                     "Error al cargar cupones", JOptionPane.ERROR_MESSAGE);
         }
+    
     }
 
     private void quitarCupon() {
