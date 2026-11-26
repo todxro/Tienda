@@ -40,12 +40,14 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.JTextField;
+import javax.swing.ListSelectionModel;
 import javax.swing.RowFilter;
 import javax.swing.Scrollable;
 import javax.swing.SwingUtilities;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableRowSorter;
+
  
  
 // Reúne las vistas y acciones con las que administración mantiene la tienda.
@@ -78,10 +80,14 @@ public class VentanaAdmin extends JFrame {
     private final JPanel panelVistas;
     private final DefaultTableModel modeloVentas;
     private final DefaultTableModel modeloCupones;
+    private final GestorEnvios gestorEnvios;
+    private final DefaultTableModel modeloTarifas;
+    private final JTextField txtMontoMinimoGratis;
     private final ServidorTiendaSocket servidorSocket;
- 
+
     public VentanaAdmin() {
         inventario = new Inventario();
+        gestorEnvios = new GestorEnvios();
         servidorSocket = new ServidorTiendaSocket(inventario);
         setTitle("Panel Administrador - Tienda");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -147,8 +153,9 @@ public class VentanaAdmin extends JFrame {
  
         // Las vistas de stock y ventas comparten el espacio central de la ventana.
         modeloVentas = new DefaultTableModel(
-                new Object[] { "Ticket", "Fecha", "RUT", "Cliente", "Correo", "Productos", "Subtotal", "IVA",
-                        "Total", "Cupon", "Descuento", "Estado" }, 0) {
+                new Object[] { "Ticket", "Fecha", "RUT", "Cliente", "Correo", "Productos",
+                        "Subtotal", "Envío", "IVA", "Total", "Cupon", "Descuento",
+                        "Modalidad", "Dirección", "Estado" }, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
                 return false;
@@ -193,7 +200,7 @@ public class VentanaAdmin extends JFrame {
                 ordenadorVentas.setRowFilter(null);
             } else {
                 // ^ y $ hacen que el estado coincida completo, columna 11 es Estado
-                ordenadorVentas.setRowFilter(RowFilter.regexFilter("^" + elegido + "$", 11));
+                ordenadorVentas.setRowFilter(RowFilter.regexFilter("^" + elegido + "$", 14));
             }
         });
         JLabel etiquetaFiltro = new JLabel("Filtrar por estado:");
@@ -240,13 +247,121 @@ public class VentanaAdmin extends JFrame {
         panelCupones.setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
         panelCupones.add(encabezadoCupones, BorderLayout.NORTH);
         panelCupones.add(scrollCupones, BorderLayout.CENTER);
- 
+        modeloTarifas = new DefaultTableModel(
+                new Object[] { "Región / Zona", "Costo envío ($)", "Plazo estimado (días hábiles)" }, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+        };
+        JTable tablaTarifas = new JTable(modeloTarifas);
+        tablaTarifas.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        tablaTarifas.setAutoCreateRowSorter(true);
+        tablaTarifas.setRowHeight(28);
+        tablaTarifas.getTableHeader().setFont(new Font(Font.SANS_SERIF, Font.BOLD, 14));
+        tablaTarifas.getTableHeader().setBackground(AZUL_MARINO);
+        tablaTarifas.getTableHeader().setForeground(MARFIL);
+        tablaTarifas.setBackground(SUPERFICIE);
+        tablaTarifas.setForeground(TEXTO_CLARO);
+        tablaTarifas.setSelectionBackground(DORADO);
+        tablaTarifas.setSelectionForeground(TEXTO);
+        tablaTarifas.setGridColor(AZUL);
+
+        JTextField txtRegion = new JTextField();
+        JTextField txtCostoEnvio = new JTextField();
+        JTextField txtDiasHabiles = new JTextField("5");
+        txtMontoMinimoGratis = new JTextField(String.valueOf((int) gestorEnvios.getMontoMinimoGratis()));
+
+        JPanel panelFormEnvio = new JPanel(new GridBagLayout());
+        panelFormEnvio.setBackground(SUPERFICIE);
+        panelFormEnvio.setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
+        panelFormEnvio.setPreferredSize(new Dimension(295, 0));
+        agregarCampo(panelFormEnvio, "Región:", txtRegion, 0);
+        agregarCampo(panelFormEnvio, "Costo ($):", txtCostoEnvio, 1);
+        agregarCampo(panelFormEnvio, "Días hábiles:", txtDiasHabiles, 2);
+
+        JButton btnGuardarTarifa = new JButton("Guardar / Actualizar tarifa");
+        JButton btnEliminarTarifa = new JButton("Eliminar región");
+        agregarBoton(panelFormEnvio, btnGuardarTarifa, 3);
+        agregarBoton(panelFormEnvio, btnEliminarTarifa, 4);
+
+        agregarCampo(panelFormEnvio, "Envío gratis desde ($):", txtMontoMinimoGratis, 5);
+        JButton btnGuardarMinimo = new JButton("Guardar mínimo envío gratis");
+        agregarBoton(panelFormEnvio, btnGuardarMinimo, 6);
+
+        tablaTarifas.getSelectionModel().addListSelectionListener(e -> {
+            int fila = tablaTarifas.getSelectedRow();
+            if (fila >= 0) {
+                int m = tablaTarifas.convertRowIndexToModel(fila);
+                txtRegion.setText(modeloTarifas.getValueAt(m, 0).toString());
+                txtCostoEnvio.setText(modeloTarifas.getValueAt(m, 1).toString());
+                txtDiasHabiles.setText(modeloTarifas.getValueAt(m, 2).toString());
+            }
+        });
+
+        btnGuardarTarifa.addActionListener(e -> {
+            try {
+                String region = txtRegion.getText().trim();
+                double costo = Double.parseDouble(txtCostoEnvio.getText().trim());
+                int dias = Integer.parseInt(txtDiasHabiles.getText().trim());
+                if (region.isEmpty() || costo < 0 || dias <= 0) {
+                    throw new IllegalArgumentException();
+                }
+                gestorEnvios.guardarOActualizarTarifa(region, costo, dias);
+                mostrarEnvios();
+                txtRegion.setText("");
+                txtCostoEnvio.setText("");
+                txtDiasHabiles.setText("5");
+            } catch (IllegalArgumentException ex) {
+                JOptionPane.showMessageDialog(this,
+                        "Ingresa una región, un costo válido (>= 0) y días hábiles (> 0).",
+                        "Datos inválidos", JOptionPane.WARNING_MESSAGE);
+            }
+        });
+
+        btnEliminarTarifa.addActionListener(e -> {
+            int fila = tablaTarifas.getSelectedRow();
+            if (fila < 0) {
+                JOptionPane.showMessageDialog(this, "Selecciona una región en la tabla.");
+                return;
+            }
+            int m = tablaTarifas.convertRowIndexToModel(fila);
+            gestorEnvios.eliminarTarifa(modeloTarifas.getValueAt(m, 0).toString());
+            mostrarEnvios();
+        });
+
+        btnGuardarMinimo.addActionListener(e -> {
+            try {
+                double minimo = Double.parseDouble(txtMontoMinimoGratis.getText().trim());
+                if (minimo < 0) {
+                    throw new IllegalArgumentException();
+                }
+                gestorEnvios.setMontoMinimoGratis(minimo);
+                JOptionPane.showMessageDialog(this,
+                        "Envío gratis configurado para compras desde $" + Math.round(minimo),
+                        "Configuración guardada", JOptionPane.INFORMATION_MESSAGE);
+            } catch (IllegalArgumentException ex) {
+                JOptionPane.showMessageDialog(this, "Ingresa un monto numérico válido (>= 0).",
+                        "Dato inválido", JOptionPane.WARNING_MESSAGE);
+            }
+        });
+
+        JScrollPane scrollTarifas = new JScrollPane(tablaTarifas);
+        scrollTarifas.getViewport().setBackground(SUPERFICIE);
+        JPanel panelEnvios = new JPanel(new BorderLayout(12, 12));
+        panelEnvios.setBackground(FONDO);
+        panelEnvios.setBorder(BorderFactory.createEmptyBorder(16, 16, 16, 16));
+        panelEnvios.add(crearEncabezado("Envíos", "Configura tarifas por región, plazos y envío gratis."),
+                BorderLayout.NORTH);
+        panelEnvios.add(scrollTarifas, BorderLayout.CENTER);
+        panelEnvios.add(panelFormEnvio, BorderLayout.WEST);
+
         disenoVistas = new CardLayout();
         panelVistas = new JPanel(disenoVistas);
         panelVistas.add(panelStock, "stock");
         panelVistas.add(panelVentas, "ventas");
         panelVistas.add(panelCupones, "cupones");
- 
+        panelVistas.add(panelEnvios, "envios");
         JLabel tituloAdmin = new JLabel("<html>TIENDA<br><b>ADMINISTRACIÓN</b></html>");
         tituloAdmin.setFont(new Font("SansSerif", Font.PLAIN, 18));
         tituloAdmin.setForeground(MARFIL);
@@ -254,6 +369,7 @@ public class VentanaAdmin extends JFrame {
         JButton btnStock = new JButton("Stock");
         JButton btnVentas = new JButton("Ventas");
         JButton btnCupones = new JButton("Cupones");
+        JButton btnEnvios = new JButton("Envíos");
         JButton btnTiempo = new JButton("Tiempo de caja");
         agregarBoton(panelControles, btnTiempo, 9);
         btnTiempo.addActionListener(e -> {
@@ -269,7 +385,7 @@ public class VentanaAdmin extends JFrame {
                 JOptionPane.showMessageDialog(this, "Numero invalido");
             }
         });
- 
+
         JPanel barraNavegacion = new JPanel(new BorderLayout(0, 18));
         barraNavegacion.setPreferredSize(new Dimension(205, 0));
         barraNavegacion.setBorder(BorderFactory.createEmptyBorder(18, 14, 18, 14));
@@ -277,6 +393,7 @@ public class VentanaAdmin extends JFrame {
         estilizarBotonNavegacion(btnStock);
         estilizarBotonNavegacion(btnVentas);
         estilizarBotonNavegacion(btnCupones);
+        estilizarBotonNavegacion(btnEnvios);
         JPanel accionesNavegacion = new JPanel();
         accionesNavegacion.setLayout(new BoxLayout(accionesNavegacion, BoxLayout.Y_AXIS));
         accionesNavegacion.setBackground(AZUL_MARINO);
@@ -285,6 +402,8 @@ public class VentanaAdmin extends JFrame {
         accionesNavegacion.add(btnVentas);
         accionesNavegacion.add(Box.createVerticalStrut(8));
         accionesNavegacion.add(btnCupones);
+        accionesNavegacion.add(Box.createVerticalStrut(8));
+        accionesNavegacion.add(btnEnvios);
         barraNavegacion.add(tituloAdmin, BorderLayout.NORTH);
         barraNavegacion.add(accionesNavegacion, BorderLayout.CENTER);
         btnStock.addActionListener(e -> {
@@ -294,6 +413,7 @@ public class VentanaAdmin extends JFrame {
         });
         btnVentas.addActionListener(e -> mostrarVentas());
         btnCupones.addActionListener(e -> mostrarCupones());
+        btnEnvios.addActionListener(e -> mostrarEnvios());
         add(barraNavegacion, BorderLayout.WEST);
         add(panelVistas, BorderLayout.CENTER);
  
@@ -374,9 +494,11 @@ public class VentanaAdmin extends JFrame {
             for (String[] venta : new GestorVentas().obtenerTodasLasVentas()) {
                 modeloVentas.addRow(new Object[] {
                         venta[0], venta[1], venta[2], venta[3], venta[4], venta[5],
-                        "$" + venta[6], "$" + venta[7], "$" + venta[8], venta[9], venta[9].isEmpty() ? "" : "$" + venta[10],
-                        EstadoPedido.desdeTexto(venta[11]).getTexto()                
-                        });
+                        "$" + venta[6], "$" + venta[12], "$" + venta[7], "$" + venta[8],
+                        venta[9], venta[9].isEmpty() ? "" : "$" + venta[10],
+                        venta[13], venta[14],
+                        EstadoPedido.desdeTexto(venta[11]).getTexto()
+                });
             }
         } catch (java.io.IOException ex) {
             JOptionPane.showMessageDialog(this, "No se pudieron cargar las ventas: " + ex.getMessage(),
@@ -432,6 +554,15 @@ public class VentanaAdmin extends JFrame {
             JOptionPane.showMessageDialog(this, "No se pudieron cargar los cupones: " + ex.getMessage(),
                     "Error al cargar cupones", JOptionPane.ERROR_MESSAGE);
         }
+    }
+    private void mostrarEnvios() {
+        gestorEnvios.cargar();
+        modeloTarifas.setRowCount(0);
+        for (TarifaEnvio t : gestorEnvios.getTarifas()) {
+            modeloTarifas.addRow(new Object[] { t.getRegion(), t.getCosto(), t.getDiasHabiles() });
+        }
+        txtMontoMinimoGratis.setText(String.valueOf((int) gestorEnvios.getMontoMinimoGratis()));
+        disenoVistas.show(panelVistas, "envios");
     }
  
     private void agregarCupon() {
