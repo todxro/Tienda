@@ -101,8 +101,9 @@ public class GestorVentas {
             
                 if (datos.length >= 9 && datos[4].equalsIgnoreCase(correoCliente)) {
                 
-                    historial.add(new String[]{datos[1], datos[5], "$" + datos[8]});
-                }
+                    String[] completa = completarCamposVenta(datos); // las ventas antiguas se completan para leer el estado en la columna 11
+                    historial.add(new String[]{completa[1], completa[5], "$" + completa[8],
+                            EstadoPedido.desdeTexto(completa[11]).getTexto()});                }
             }
         } catch (IOException e) {
             System.out.println("Error al leer historial: " + e.getMessage());

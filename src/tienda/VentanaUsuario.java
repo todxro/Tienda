@@ -329,6 +329,10 @@ public class VentanaUsuario extends JFrame {
         estilizarBoton(btnDeseos, DORADO, TEXTO);
         btnDeseos.addActionListener(e -> mostrarVentanaDeseos());
         busqueda.add(btnDeseos);
+        JButton btnPedidos = new JButton("Mis pedidos");
+        estilizarBoton(btnPedidos, DORADO, TEXTO);
+        btnPedidos.addActionListener(e -> mostrarMisPedidos());
+        busqueda.add(btnPedidos);
 
         if (usuario == null) {
             JButton btnIniciarSesion = new JButton("Iniciar sesión");
@@ -1525,6 +1529,53 @@ private JPanel crearTarjeta(Producto producto) {
         ventanaDeseos.add(panelBajo, BorderLayout.SOUTH);
         ventanaDeseos.setVisible(true);
         
+    }
+    
+    // muestra las compras del cliente con su estado y se actualiza sola cada 3 segundos
+    private void mostrarMisPedidos() {
+        if (usuario == null) {
+            JOptionPane.showMessageDialog(this, "Inicia sesión para ver tus pedidos.");
+            return;
+        }
+
+        JDialog ventanaPedidos = new JDialog(this, "Mis pedidos", true);
+        ventanaPedidos.setSize(750, 400);
+        ventanaPedidos.setLocationRelativeTo(this);
+        ventanaPedidos.setLayout(new BorderLayout(10, 10));
+        ventanaPedidos.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
+
+        DefaultTableModel modeloPedidos = new DefaultTableModel(
+                new Object[]{"Fecha", "Productos", "Total", "Estado"}, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) { return false; }
+        };
+        JTable tablaPedidos = new JTable(modeloPedidos);
+        tablaPedidos.setRowHeight(26);
+
+        // vuelve a leer las compras del cliente desde ventas.csv
+        Runnable cargarPedidos = () -> {
+            modeloPedidos.setRowCount(0);
+            for (String[] pedido : new GestorVentas().obtenerHistorialCliente(usuario.getCorreo())) {
+                modeloPedidos.addRow(pedido);
+            }
+        };
+        cargarPedidos.run();
+
+        // revisa cada 3 segundos si el admin cambio algun estado, asi no hay que recargar
+        Timer actualizador = new Timer(3000, e -> cargarPedidos.run());
+        actualizador.start();
+        ventanaPedidos.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosed(WindowEvent e) {
+                actualizador.stop();
+            }
+        });
+
+        JLabel aviso = new JLabel("  El estado se actualiza solo cuando la tienda avanza tu pedido.");
+        aviso.setForeground(TEXTO_CLARO);
+        ventanaPedidos.add(new JScrollPane(tablaPedidos), BorderLayout.CENTER);
+        ventanaPedidos.add(aviso, BorderLayout.SOUTH);
+        ventanaPedidos.setVisible(true);
     }
     private void aplicarCupon() {
         if (carrito.getProductos().isEmpty()) {
