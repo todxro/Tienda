@@ -14,7 +14,7 @@ import java.util.List;
 // Guarda las ventas y consulta el historial persistido en ventas.csv.
 public class GestorVentas {
     private static final String RUTA_ARCHIVO = "ventas.csv";
-    private static final String ENCABEZADO = "numeroTicket,fecha,rutCliente,nombreCliente,correoCliente,detalleProductos,subtotal,iva,total,cupon,descuento,estado";    
+    private static final String ENCABEZADO = "numeroTicket,fecha,rutCliente,nombreCliente,correoCliente,detalleProductos,subtotal,iva,total,cupon,descuento,estado,costoEnvio,modalidadEntrega,direccionEntrega";    
     public void guardarVenta(Venta venta) throws IOException {
         File archivo = new File(RUTA_ARCHIVO);
         prepararArchivo(archivo);
@@ -101,8 +101,9 @@ public class GestorVentas {
             
                 if (datos.length >= 9 && datos[4].equalsIgnoreCase(correoCliente)) {
                 
-                    historial.add(new String[]{datos[1], datos[5], "$" + datos[8]});
-                }
+                    String[] completa = completarCamposVenta(datos); // las ventas antiguas se completan para leer el estado en la columna 11
+                    historial.add(new String[]{completa[1], completa[5], "$" + completa[8],
+                            EstadoPedido.desdeTexto(completa[11]).getTexto()});                }
             }
         } catch (IOException e) {
             System.out.println("Error al leer historial: " + e.getMessage());
@@ -136,19 +137,15 @@ public class GestorVentas {
                     throw new IOException("La venta en la línea " + numeroLinea + " está incompleta.");
                 }
                 // las ventas antiguas no tienen cupon, descuento ni estado
-                String[] completa = new String[12];
-                for (int i = 0; i < completa.length; i++) {
-                    completa[i] = i < datos.length ? datos[i] : "";
-                }
-                ventas.add(completa);            
-            }
+                ventas.add(completarCamposVenta(datos));
         }
-
+    }
         return ventas;
+    
     }
     
     // avanza un paso el estado de una venta y reescribe el archivo
-    // devuelve el nuevo estado, o null si no se encontro la venta o ya estaba entregada
+    // devuelve el nuevo estado, o null si no se encontro la venta o ya estaba entregada/cancelada
     public EstadoPedido avanzarEstado(String ticket, String fecha) throws IOException {
         File archivo = new File(RUTA_ARCHIVO);
         if (!archivo.exists()) {
@@ -162,22 +159,49 @@ public class GestorVentas {
                 continue;
             }
 
-            String estadoActual = datos.length >= 12 ? datos[11] : "";
-            EstadoPedido siguiente = EstadoPedido.desdeTexto(estadoActual).siguiente();
+            String[] completa = completarCamposVenta(datos);
+            EstadoPedido siguiente = EstadoPedido.desdeTexto(completa[11]).siguiente();
             if (siguiente == null) {
                 return null;
             }
 
-            // deja la linea sin el estado viejo, o con cupon y descuento vacios si es una venta antigua
-            String base = lineas.get(i);
-            if (datos.length >= 12) {
-                base = base.substring(0, base.lastIndexOf(','));
-            } else if (datos.length == 9) {
-                base = base + ",,0";
-            }
-            lineas.set(i, base + "," + siguiente.name());
+            
+            completa[11] = siguiente.name();
+            lineas.set(i, reconstruirLineaCSV(completa));
             Files.write(archivo.toPath(), lineas, StandardCharsets.UTF_8);
             return siguiente;
+        }
+        return null;
+    }
+
+    // cancela una venta y devuelve su detalleProductos para reponer el stock
+    // devuelve null si no se encontro la venta
+    // lanza IllegalStateException si el pedido ya no se puede cancelar
+    public String cancelarPedido(String ticket, String fecha) throws IOException {
+        File archivo = new File(RUTA_ARCHIVO);
+        if (!archivo.exists()) {
+            return null;
+        }
+
+        List<String> lineas = Files.readAllLines(archivo.toPath(), StandardCharsets.UTF_8);
+        for (int i = 1; i < lineas.size(); i++) {
+            String[] datos = parsearLineaCSV(lineas.get(i));
+            if (datos.length < 9 || !datos[0].equals(ticket) || !datos[1].equals(fecha)) {
+                continue;
+            }
+
+            String[] completa = completarCamposVenta(datos);
+            EstadoPedido actual = EstadoPedido.desdeTexto(completa[11]);
+            if (!actual.sePuedeCancelar()) {
+                throw new IllegalStateException(actual == EstadoPedido.CANCELADO
+                        ? "Este pedido ya fue cancelado."
+                        : "Solo se pueden cancelar pedidos Pendientes o en Preparación.");
+            }
+
+            completa[11] = EstadoPedido.CANCELADO.name();
+            lineas.set(i, reconstruirLineaCSV(completa));
+            Files.write(archivo.toPath(), lineas, StandardCharsets.UTF_8);
+            return completa[5];
         }
         return null;
     }
@@ -207,36 +231,43 @@ public class GestorVentas {
         campos.add(campoActual.toString().trim());
         return campos.toArray(new String[0]);
     }
-
-    public boolean eliminarVenta(String ticket, String fecha) throws IOException {
-        File archivo = new File(RUTA_ARCHIVO);
-        if (!archivo.exists()) {
-            return false;
+    private String[] completarCamposVenta(String[] datos) {
+        String[] completa = new String[15];
+        for (int i = 0; i < completa.length; i++) {
+            completa[i] = i < datos.length ? datos[i] : "";
         }
-
-        List<String> lineas = Files.readAllLines(archivo.toPath(), StandardCharsets.UTF_8);
-        boolean eliminada = false;
-
-        for (int i = 1; i < lineas.size(); i++) {
-            String[] datos = parsearLineaCSV(lineas.get(i));
-            if (datos.length < 9 || !datos[0].equals(ticket) || !datos[1].equals(fecha)) {
-                continue;
+        if (completa[10].isEmpty()) {
+            completa[10] = "0";
+        }
+        if (completa[12].isEmpty()) {
+            completa[12] = "0";
+        }
+        if (completa[13].isEmpty()) {
+            completa[13] = Despacho.RETIRO_TIENDA;
+        }
+        if (completa[14].isEmpty()) {
+            completa[14] = "Retiro en local";
+        }
+        return completa;
+    }
+    private String reconstruirLineaCSV(String[] campos) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < campos.length; i++) {
+            if (i > 0) {
+                sb.append(',');
             }
-            lineas.remove(i);
-            eliminada = true;
-            break;
+            sb.append(escaparCSV(campos[i]));
         }
+        return sb.toString();
+    }
 
-        if (eliminada) {
-            Files.write(archivo.toPath(), lineas, StandardCharsets.UTF_8);
+    private String escaparCSV(String valor) {
+        if (valor == null) {
+            return "";
         }
-        return eliminada;
-    } 
-    public void devolverStockCarrito(Carrito carrito) { //tener que hacer denuevo porque con la id esta dificil encontrar la wea xd
-        for (int i = 0; i < carrito.getProductos().size(); i++) {
-            Producto producto = carrito.getProductos().get(i);
-            int cantidad = carrito.getCantidad(producto.getId());
-            producto.setStock(producto.getStock() + cantidad);
+        if (valor.contains(",") || valor.contains("\"") || valor.contains("\n") || valor.contains("\r")) {
+            return "\"" + valor.replace("\"", "\"\"") + "\"";
         }
+        return valor;
     }
 }

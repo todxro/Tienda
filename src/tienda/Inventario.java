@@ -50,6 +50,36 @@ public class Inventario {
         return false;
     }
 
+    // suma unidades al stock de un producto buscandolo por id
+    public synchronized boolean reponerStock(String id, int cantidad) {
+        if (cantidad <= 0) {
+            return false;
+        }
+        Producto p = buscarProducto(id); // recarga desde el archivo antes de sumar
+        if (p == null) {
+            return false;
+        }
+        p.setStock(p.getStock() + cantidad);
+        guardarEnArchivo();
+        return true;
+    }
+
+    // suma unidades al stock buscando el producto por nombre (el detalle de la venta guarda nombres)
+    public synchronized boolean reponerStockPorNombre(String nombre, int cantidad) {
+        if (cantidad <= 0 || nombre == null) {
+            return false;
+        }
+        cargarDesdeArchivo(); // trabaja con el stock mas reciente del archivo
+        for (Producto p : listaProductos) {
+            if (p.getNombre().equalsIgnoreCase(nombre.trim())) {
+                p.setStock(p.getStock() + cantidad);
+                guardarEnArchivo();
+                return true;
+            }
+        }
+        return false;
+    }
+
     public boolean actualizarProducto(String id, String nombre, double precio, int stock, String categoria) {
         if (nombre == null || nombre.isBlank() || precio < 0 || stock < 0) {
             return false;
@@ -77,6 +107,43 @@ public class Inventario {
             }
         }
         return null;
+    }
+
+    // Actualiza la copia local del catálogo con datos recibidos desde ADMIN.
+    public synchronized int aplicarActualizacionRemota(Producto recibido) {
+        if (recibido == null || recibido.getId() == null || recibido.getId().isBlank()
+                || recibido.getNombre() == null || recibido.getPrecio() < 0 || recibido.getStock() < 0) {
+            throw new IllegalArgumentException("Los datos del producto recibido no son válidos.");
+        }
+
+        Producto actual = null;
+        for (Producto producto : listaProductos) {
+            if (producto.getId().equalsIgnoreCase(recibido.getId())) {
+                actual = producto;
+                break;
+            }
+        }
+
+        int stockAnterior = actual == null ? -1 : actual.getStock();
+        if (actual == null) {
+            listaProductos.add(new Producto(recibido.getId(), recibido.getNombre(),
+                    recibido.getPrecio(), recibido.getStock(), recibido.getCategoria()));
+        } else {
+            actual.setNombre(recibido.getNombre());
+            actual.setPrecio(recibido.getPrecio());
+            actual.setStock(recibido.getStock());
+            actual.setCategoria(recibido.getCategoria());
+        }
+        guardarEnArchivo();
+        return stockAnterior;
+    }
+
+    public synchronized boolean eliminarProductoRemoto(String id) {
+        boolean eliminado = listaProductos.removeIf(producto -> producto.getId().equalsIgnoreCase(id));
+        if (eliminado) {
+            guardarEnArchivo();
+        }
+        return eliminado;
     }
 
     public ArrayList<Producto> getListaProductos() {

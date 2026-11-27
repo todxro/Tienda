@@ -5,7 +5,8 @@ public enum EstadoPedido {
     PENDIENTE("Pendiente"),
     PREPARANDO("Preparando"),
     ENVIADO("Enviado"),
-    ENTREGADO("Entregado");
+    ENTREGADO("Entregado"),
+    CANCELADO("Cancelado");
 
     private final String texto;
 
@@ -18,12 +19,17 @@ public enum EstadoPedido {
         return texto;
     }
 
-    // el estado que viene despues, o null si el pedido ya fue entregado
+    // el estado que viene despues, o null si el pedido ya fue entregado o cancelado
     public EstadoPedido siguiente() {
-        if (this == ENTREGADO) {
+        if (this == ENTREGADO || this == CANCELADO) {
             return null;
         }
         return values()[ordinal() + 1];
+    }
+
+    // solo se puede cancelar antes de que el pedido salga de la tienda
+    public boolean sePuedeCancelar() {
+        return this == PENDIENTE || this == PREPARANDO;
     }
 
     // convierte el texto guardado en el csv, si viene vacio es una venta antigua

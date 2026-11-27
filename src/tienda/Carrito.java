@@ -11,11 +11,13 @@ private ArrayList<Producto> productos;
 private ArrayList<Integer> cantidades;
 // cupon aplicado al carrito, null si no hay
 private Cupon cupon;
+private Despacho despacho;
 
 public Carrito() {
     // inicia las listas del carrito
     productos = new ArrayList<>();
     cantidades = new ArrayList<>();
+    despacho = new Despacho();
 }
 
 // agrega un producto al carrito    
@@ -150,7 +152,9 @@ public void quitarCupon() {
 public Cupon getCupon() {
     return cupon;
 }
-
+public Despacho getDespacho() {
+    return despacho;
+}
 // monto que se descuenta del subtotal, 0 si no hay cupon
 public double calcularDescuento() {
     if (cupon == null) {
@@ -164,14 +168,18 @@ public double calcularSubtotalNeto() {
     return calcularSubtotalCarrito() - calcularDescuento();
 }
 
+public double calcularEnvio() {
+    return despacho == null ? 0 : despacho.calcularCosto(calcularSubtotalNeto());
+}
+
 // calcula el monto de IVA sobre el subtotal neto
 public double calcularIVA() {
-    return calcularSubtotalNeto() * TASA_IVA;
+return (calcularSubtotalNeto() + calcularEnvio()) * TASA_IVA;
 }
 
 // calcula el precio total del carrito (subtotal neto + IVA)
 public double calcularTotal() {
-    return calcularSubtotalNeto() + calcularIVA();
+return calcularSubtotalNeto() + calcularEnvio() + calcularIVA();
 }
 
 // finaliza la compra y descuenta el stock
@@ -181,6 +189,7 @@ public boolean finalizarCompra() {
     productos.clear();
     cantidades.clear();
     cupon = null;
+    despacho.configurarRetiroEnTienda();    
 
     return true;
 }
@@ -199,5 +208,6 @@ public void vaciarCarrito() {
     productos.clear();
     cantidades.clear();
     cupon = null;
+    despacho.configurarRetiroEnTienda();
  }
 }

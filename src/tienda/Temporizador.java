@@ -21,7 +21,7 @@ public class Temporizador {
                         JLabel lblContador, VentanaUsuario ventana) {
         this.carrito = carrito;
         this.inventario = inventario;
-        this.ventana = ventana;
+        this.ventana = ventana; 
         this.lblContador = lblContador;
         this.duracionSegundos = leerSegundos();
         this.tiempoRestante = duracionSegundos;

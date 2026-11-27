@@ -7,7 +7,6 @@ import java.awt.Component;
 import java.awt.Container;
 import java.awt.Cursor;
 import java.awt.Dimension;
-import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
@@ -19,6 +18,8 @@ import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.io.File;
 import java.io.IOException;
 import java.time.LocalDate;
@@ -39,21 +40,26 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.JTextField;
+import javax.swing.ListSelectionModel;
+import javax.swing.RowFilter;
 import javax.swing.Scrollable;
 import javax.swing.SwingUtilities;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.table.TableRowSorter;
+
  
  
 // Reúne las vistas y acciones con las que administración mantiene la tienda.
-// Índice por línea:
-// - Inicio y navegación: constructor VentanaAdmin (88), mostrarVentas (512)
-// - Productos e imágenes: seleccionarImagenProducto (250), agregarProducto (575),
-//   actualizarProducto (594), borrarProducto (616), idSeleccionado (633), cargarSeleccion (642)
-// - Interfaz y formularios: estilizarBotonStock (532), agregarCampo (540), agregarBoton (560),
-//   actualizarVista (657), refrescarTabla (661), categoriaIngresada (671), limpiarCampos (676),
-//   mostrarSeleccion (684), mostrarDatosInvalidos (689)
-// - Inicio de la aplicación: main (695)
+// Secciones:
+// - Inicio y navegación: constructor VentanaAdmin, mostrarVentas
+// - Ventas: avanzarEstadoSeleccionado, devolverAlStock, cancelarPedidoSeleccionado
+// - Productos e imágenes: seleccionarImagenProducto, agregarProducto,
+//   actualizarProducto, borrarProducto, idSeleccionado, cargarSeleccion
+// - Interfaz y formularios: estilizarBotonStock, agregarCampo, agregarBoton,
+//   actualizarVista, refrescarTabla, categoriaIngresada, limpiarCampos,
+//   mostrarSeleccion, mostrarDatosInvalidos
+// - Inicio de la aplicación: main
 public class VentanaAdmin extends JFrame {
     private static final Color AZUL = new Color(50, 116, 174);
     private static final Color AZUL_MARINO = new Color(22, 50, 78);
@@ -75,11 +81,23 @@ public class VentanaAdmin extends JFrame {
     private final JPanel panelVistas;
     private final DefaultTableModel modeloVentas;
     private final DefaultTableModel modeloCupones;
- 
+    private final GestorEnvios gestorEnvios;
+    private final DefaultTableModel modeloTarifas;
+    private final JTextField txtMontoMinimoGratis;
+    private final ServidorTiendaSocket servidorSocket;
+
     public VentanaAdmin() {
         inventario = new Inventario();
+        gestorEnvios = new GestorEnvios();
+        servidorSocket = new ServidorTiendaSocket(inventario);
         setTitle("Panel Administrador - Tienda");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent e) {
+                servidorSocket.close();
+            }
+        });
         getContentPane().setBackground(FONDO);
         setLayout(new BorderLayout(14, 14));
  
@@ -136,15 +154,17 @@ public class VentanaAdmin extends JFrame {
  
         // Las vistas de stock y ventas comparten el espacio central de la ventana.
         modeloVentas = new DefaultTableModel(
-                new Object[] { "Ticket", "Fecha", "RUT", "Cliente", "Correo", "Productos", "Subtotal", "IVA",
-                        "Total", "Estado" }, 0) {
+                new Object[] { "Ticket", "Fecha", "RUT", "Cliente", "Correo", "Productos",
+                        "Subtotal", "Envío", "IVA", "Total", "Cupon", "Descuento",
+                        "Modalidad", "Dirección", "Estado" }, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
                 return false;
             }
         };
         JTable tablaVentas = new JTable(modeloVentas);
-        tablaVentas.setAutoCreateRowSorter(true);
+        TableRowSorter<DefaultTableModel> ordenadorVentas = new TableRowSorter<>(modeloVentas);
+        tablaVentas.setRowSorter(ordenadorVentas);        
         tablaVentas.setRowHeight(28);
         tablaVentas.getTableHeader().setFont(new Font(Font.SANS_SERIF, Font.BOLD, 14));
         tablaVentas.getTableHeader().setBackground(AZUL_MARINO);
@@ -165,36 +185,43 @@ public class VentanaAdmin extends JFrame {
         JButton btnAvanzarEstado = new JButton("Avanzar estado");
         estilizarBotonStock(btnAvanzarEstado);
         btnAvanzarEstado.addActionListener(e -> avanzarEstadoSeleccionado(tablaVentas));
-        JButton btnCancelarVenta = new JButton("Cancelar venta");
-        estilizarBotonStock(btnCancelarVenta);
-        btnCancelarVenta.addActionListener(e -> {
-            int fila = tablaVentas.getSelectedRow();
-            if (fila < 0) {
-                JOptionPane.showMessageDialog(this, "Selecciona una venta de la tabla.", "Cancelar venta",
-                        JOptionPane.WARNING_MESSAGE);
-                return;
-            }
-            int filaModelo = tablaVentas.convertRowIndexToModel(fila);
-            String ticket = String.valueOf(modeloVentas.getValueAt(filaModelo, 0));
-            String fecha = String.valueOf(modeloVentas.getValueAt(filaModelo, 1));
-            try {
-                if (!new GestorVentas().eliminarVenta(ticket, fecha)) {
-                    JOptionPane.showMessageDialog(this, "No se pudo cancelar la venta.",
-                            "Error al cancelar", JOptionPane.ERROR_MESSAGE);
-                    return;
-                }
-                mostrarVentas();
-                JOptionPane.showMessageDialog(this, "La venta ha sido cancelada y el stock devuelto.",
-                        "Venta cancelada", JOptionPane.INFORMATION_MESSAGE);
-            } catch (Exception ex) {
-                JOptionPane.showMessageDialog(this, "No se pudo cancelar la venta: " + ex.getMessage(),
-                        "Error al cancelar", JOptionPane.ERROR_MESSAGE);
+
+        // boton para cancelar el pedido seleccionado y devolver sus productos al stock
+        JButton btnCancelarPedido = new JButton("Cancelar pedido");
+        estilizarBotonStock(btnCancelarPedido);
+        btnCancelarPedido.addActionListener(e -> cancelarPedidoSeleccionado(tablaVentas));
+
+        JPanel accionesVentas = new JPanel();
+        accionesVentas.setBackground(FONDO);
+        accionesVentas.add(btnCancelarPedido);
+        accionesVentas.add(btnAvanzarEstado);
+
+        JPanel barraVentas = new JPanel(new BorderLayout());
+        barraVentas.setBackground(FONDO);
+        barraVentas.add(accionesVentas, BorderLayout.EAST);
+        
+        // filtro para ver solo los pedidos de un estado
+        JComboBox<String> filtroEstado = new JComboBox<>();
+        filtroEstado.addItem("Todos");
+        for (EstadoPedido estado : EstadoPedido.values()) {
+            filtroEstado.addItem(estado.getTexto());
+        }
+        filtroEstado.addActionListener(e -> {
+            String elegido = (String) filtroEstado.getSelectedItem();
+            if (elegido.equals("Todos")) {
+                ordenadorVentas.setRowFilter(null);
+            } else {
+                // ^ y $ hacen que el estado coincida completo, columna 14 es Estado
+                ordenadorVentas.setRowFilter(RowFilter.regexFilter("^" + elegido + "$", 14));
             }
         });
-        JPanel barraVentas = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
-        barraVentas.setBackground(FONDO);
-        barraVentas.add(btnAvanzarEstado);
-        barraVentas.add(btnCancelarVenta);
+        JLabel etiquetaFiltro = new JLabel("Filtrar por estado:");
+        etiquetaFiltro.setForeground(TEXTO);
+        JPanel panelFiltro = new JPanel();
+        panelFiltro.setBackground(FONDO);
+        panelFiltro.add(etiquetaFiltro);
+        panelFiltro.add(filtroEstado);
+        barraVentas.add(panelFiltro, BorderLayout.WEST);
         panelVentas.add(barraVentas, BorderLayout.SOUTH);
  
         modeloCupones = new DefaultTableModel(
@@ -232,13 +259,121 @@ public class VentanaAdmin extends JFrame {
         panelCupones.setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
         panelCupones.add(encabezadoCupones, BorderLayout.NORTH);
         panelCupones.add(scrollCupones, BorderLayout.CENTER);
- 
+        modeloTarifas = new DefaultTableModel(
+                new Object[] { "Región / Zona", "Costo envío ($)", "Plazo estimado (días hábiles)" }, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+        };
+        JTable tablaTarifas = new JTable(modeloTarifas);
+        tablaTarifas.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        tablaTarifas.setAutoCreateRowSorter(true);
+        tablaTarifas.setRowHeight(28);
+        tablaTarifas.getTableHeader().setFont(new Font(Font.SANS_SERIF, Font.BOLD, 14));
+        tablaTarifas.getTableHeader().setBackground(AZUL_MARINO);
+        tablaTarifas.getTableHeader().setForeground(MARFIL);
+        tablaTarifas.setBackground(SUPERFICIE);
+        tablaTarifas.setForeground(TEXTO_CLARO);
+        tablaTarifas.setSelectionBackground(DORADO);
+        tablaTarifas.setSelectionForeground(TEXTO);
+        tablaTarifas.setGridColor(AZUL);
+
+        JTextField txtRegion = new JTextField();
+        JTextField txtCostoEnvio = new JTextField();
+        JTextField txtDiasHabiles = new JTextField("5");
+        txtMontoMinimoGratis = new JTextField(String.valueOf((int) gestorEnvios.getMontoMinimoGratis()));
+
+        JPanel panelFormEnvio = new JPanel(new GridBagLayout());
+        panelFormEnvio.setBackground(SUPERFICIE);
+        panelFormEnvio.setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
+        panelFormEnvio.setPreferredSize(new Dimension(295, 0));
+        agregarCampo(panelFormEnvio, "Región:", txtRegion, 0);
+        agregarCampo(panelFormEnvio, "Costo ($):", txtCostoEnvio, 1);
+        agregarCampo(panelFormEnvio, "Días hábiles:", txtDiasHabiles, 2);
+
+        JButton btnGuardarTarifa = new JButton("Guardar / Actualizar tarifa");
+        JButton btnEliminarTarifa = new JButton("Eliminar región");
+        agregarBoton(panelFormEnvio, btnGuardarTarifa, 3);
+        agregarBoton(panelFormEnvio, btnEliminarTarifa, 4);
+
+        agregarCampo(panelFormEnvio, "Envío gratis desde ($):", txtMontoMinimoGratis, 5);
+        JButton btnGuardarMinimo = new JButton("Guardar mínimo envío gratis");
+        agregarBoton(panelFormEnvio, btnGuardarMinimo, 6);
+
+        tablaTarifas.getSelectionModel().addListSelectionListener(e -> {
+            int fila = tablaTarifas.getSelectedRow();
+            if (fila >= 0) {
+                int m = tablaTarifas.convertRowIndexToModel(fila);
+                txtRegion.setText(modeloTarifas.getValueAt(m, 0).toString());
+                txtCostoEnvio.setText(modeloTarifas.getValueAt(m, 1).toString());
+                txtDiasHabiles.setText(modeloTarifas.getValueAt(m, 2).toString());
+            }
+        });
+
+        btnGuardarTarifa.addActionListener(e -> {
+            try {
+                String region = txtRegion.getText().trim();
+                double costo = Double.parseDouble(txtCostoEnvio.getText().trim());
+                int dias = Integer.parseInt(txtDiasHabiles.getText().trim());
+                if (region.isEmpty() || costo < 0 || dias <= 0) {
+                    throw new IllegalArgumentException();
+                }
+                gestorEnvios.guardarOActualizarTarifa(region, costo, dias);
+                mostrarEnvios();
+                txtRegion.setText("");
+                txtCostoEnvio.setText("");
+                txtDiasHabiles.setText("5");
+            } catch (IllegalArgumentException ex) {
+                JOptionPane.showMessageDialog(this,
+                        "Ingresa una región, un costo válido (>= 0) y días hábiles (> 0).",
+                        "Datos inválidos", JOptionPane.WARNING_MESSAGE);
+            }
+        });
+
+        btnEliminarTarifa.addActionListener(e -> {
+            int fila = tablaTarifas.getSelectedRow();
+            if (fila < 0) {
+                JOptionPane.showMessageDialog(this, "Selecciona una región en la tabla.");
+                return;
+            }
+            int m = tablaTarifas.convertRowIndexToModel(fila);
+            gestorEnvios.eliminarTarifa(modeloTarifas.getValueAt(m, 0).toString());
+            mostrarEnvios();
+        });
+
+        btnGuardarMinimo.addActionListener(e -> {
+            try {
+                double minimo = Double.parseDouble(txtMontoMinimoGratis.getText().trim());
+                if (minimo < 0) {
+                    throw new IllegalArgumentException();
+                }
+                gestorEnvios.setMontoMinimoGratis(minimo);
+                JOptionPane.showMessageDialog(this,
+                        "Envío gratis configurado para compras desde $" + Math.round(minimo),
+                        "Configuración guardada", JOptionPane.INFORMATION_MESSAGE);
+            } catch (IllegalArgumentException ex) {
+                JOptionPane.showMessageDialog(this, "Ingresa un monto numérico válido (>= 0).",
+                        "Dato inválido", JOptionPane.WARNING_MESSAGE);
+            }
+        });
+
+        JScrollPane scrollTarifas = new JScrollPane(tablaTarifas);
+        scrollTarifas.getViewport().setBackground(SUPERFICIE);
+        JPanel panelEnvios = new JPanel(new BorderLayout(12, 12));
+        panelEnvios.setBackground(FONDO);
+        panelEnvios.setBorder(BorderFactory.createEmptyBorder(16, 16, 16, 16));
+        panelEnvios.add(crearEncabezado("Envíos", "Configura tarifas por región, plazos y envío gratis."),
+                BorderLayout.NORTH);
+        panelEnvios.add(scrollTarifas, BorderLayout.CENTER);
+        panelEnvios.add(panelFormEnvio, BorderLayout.WEST);
+
         disenoVistas = new CardLayout();
         panelVistas = new JPanel(disenoVistas);
         panelVistas.add(panelStock, "stock");
         panelVistas.add(panelVentas, "ventas");
         panelVistas.add(panelCupones, "cupones");
- 
+        panelVistas.add(panelEnvios, "envios");
         JLabel tituloAdmin = new JLabel("<html>TIENDA<br><b>ADMINISTRACIÓN</b></html>");
         tituloAdmin.setFont(new Font("SansSerif", Font.PLAIN, 18));
         tituloAdmin.setForeground(MARFIL);
@@ -246,6 +381,7 @@ public class VentanaAdmin extends JFrame {
         JButton btnStock = new JButton("Stock");
         JButton btnVentas = new JButton("Ventas");
         JButton btnCupones = new JButton("Cupones");
+        JButton btnEnvios = new JButton("Envíos");
         JButton btnTiempo = new JButton("Tiempo de caja");
         agregarBoton(panelControles, btnTiempo, 9);
         btnTiempo.addActionListener(e -> {
@@ -261,7 +397,7 @@ public class VentanaAdmin extends JFrame {
                 JOptionPane.showMessageDialog(this, "Numero invalido");
             }
         });
- 
+
         JPanel barraNavegacion = new JPanel(new BorderLayout(0, 18));
         barraNavegacion.setPreferredSize(new Dimension(205, 0));
         barraNavegacion.setBorder(BorderFactory.createEmptyBorder(18, 14, 18, 14));
@@ -269,6 +405,7 @@ public class VentanaAdmin extends JFrame {
         estilizarBotonNavegacion(btnStock);
         estilizarBotonNavegacion(btnVentas);
         estilizarBotonNavegacion(btnCupones);
+        estilizarBotonNavegacion(btnEnvios);
         JPanel accionesNavegacion = new JPanel();
         accionesNavegacion.setLayout(new BoxLayout(accionesNavegacion, BoxLayout.Y_AXIS));
         accionesNavegacion.setBackground(AZUL_MARINO);
@@ -277,6 +414,8 @@ public class VentanaAdmin extends JFrame {
         accionesNavegacion.add(btnVentas);
         accionesNavegacion.add(Box.createVerticalStrut(8));
         accionesNavegacion.add(btnCupones);
+        accionesNavegacion.add(Box.createVerticalStrut(8));
+        accionesNavegacion.add(btnEnvios);
         barraNavegacion.add(tituloAdmin, BorderLayout.NORTH);
         barraNavegacion.add(accionesNavegacion, BorderLayout.CENTER);
         btnStock.addActionListener(e -> {
@@ -286,6 +425,7 @@ public class VentanaAdmin extends JFrame {
         });
         btnVentas.addActionListener(e -> mostrarVentas());
         btnCupones.addActionListener(e -> mostrarCupones());
+        btnEnvios.addActionListener(e -> mostrarEnvios());
         add(barraNavegacion, BorderLayout.WEST);
         add(panelVistas, BorderLayout.CENTER);
  
@@ -297,6 +437,16 @@ public class VentanaAdmin extends JFrame {
  
         refrescarTarjetas();
         setExtendedState(JFrame.MAXIMIZED_BOTH);
+        try {
+            servidorSocket.iniciar();
+            System.out.println("Servidor de tienda escuchando en el puerto "
+                    + servidorSocket.getPuerto() + ".");
+        } catch (IOException ex) {
+            JOptionPane.showMessageDialog(this,
+                    "No se pudo iniciar el servidor en el puerto " + servidorSocket.getPuerto()
+                            + ": " + ex.getMessage(),
+                    "Error al iniciar servidor", JOptionPane.ERROR_MESSAGE);
+        }
     }
  
     private void seleccionarImagenProducto() {
@@ -356,9 +506,11 @@ public class VentanaAdmin extends JFrame {
             for (String[] venta : new GestorVentas().obtenerTodasLasVentas()) {
                 modeloVentas.addRow(new Object[] {
                         venta[0], venta[1], venta[2], venta[3], venta[4], venta[5],
-                        "$" + venta[6], "$" + venta[7], "$" + venta[8],
-                        EstadoPedido.desdeTexto(venta[11]).getTexto()                
-                        });
+                        "$" + venta[6], "$" + venta[12], "$" + venta[7], "$" + venta[8],
+                        venta[9], venta[9].isEmpty() ? "" : "$" + venta[10],
+                        venta[13], venta[14],
+                        EstadoPedido.desdeTexto(venta[11]).getTexto()
+                });
             }
         } catch (java.io.IOException ex) {
             JOptionPane.showMessageDialog(this, "No se pudieron cargar las ventas: " + ex.getMessage(),
@@ -377,7 +529,7 @@ public class VentanaAdmin extends JFrame {
                     JOptionPane.WARNING_MESSAGE);
             return;
         }
-    
+ 
         // la tabla se puede ordenar, por eso se convierte la fila a la del modelo
         int filaModelo = tabla.convertRowIndexToModel(fila);
         String ticket = String.valueOf(modeloVentas.getValueAt(filaModelo, 0));
@@ -386,7 +538,7 @@ public class VentanaAdmin extends JFrame {
         try {
             EstadoPedido nuevo = new GestorVentas().avanzarEstado(ticket, fecha);
             if (nuevo == null) {
-                JOptionPane.showMessageDialog(this, "Este pedido ya fue entregado.", "Seguimiento",
+                JOptionPane.showMessageDialog(this, "Este pedido ya fue entregado o cancelado.", "Seguimiento",
                         JOptionPane.INFORMATION_MESSAGE);
                 return;
             }
@@ -397,7 +549,74 @@ public class VentanaAdmin extends JFrame {
         }
         mostrarVentas();
     }
-    
+
+    // devuelve al inventario los productos de una venta cancelada
+    // retorna los items que no se pudieron reponer
+    private java.util.List<String> devolverAlStock(String detalle) {
+        java.util.List<String> noRepuestos = new java.util.ArrayList<>();
+        java.util.regex.Pattern formato = java.util.regex.Pattern.compile("^(\\d+)x\\s+(.+)$");
+
+        for (String item : detalle.split("\\|")) {
+            item = item.trim();
+            if (item.isEmpty()) {
+                continue;
+            }
+            java.util.regex.Matcher m = formato.matcher(item);
+            if (!m.matches() || !inventario.reponerStockPorNombre(m.group(2), Integer.parseInt(m.group(1)))) {
+                noRepuestos.add(item);
+            }
+        }
+        return noRepuestos;
+    }
+
+    // cancela el pedido seleccionado, lo marca como Cancelado y devuelve los productos al stock
+    private void cancelarPedidoSeleccionado(JTable tabla) {
+        int fila = tabla.getSelectedRow();
+        if (fila < 0) {
+            JOptionPane.showMessageDialog(this, "Selecciona una venta de la tabla.", "Cancelar pedido",
+                    JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        int filaModelo = tabla.convertRowIndexToModel(fila);
+        String ticket = String.valueOf(modeloVentas.getValueAt(filaModelo, 0));
+        String fecha = String.valueOf(modeloVentas.getValueAt(filaModelo, 1));
+
+        int respuesta = JOptionPane.showConfirmDialog(this,
+                "¿Cancelar el pedido " + ticket + "? Los productos volverán al stock.",
+                "Confirmar cancelación", JOptionPane.YES_NO_OPTION);
+        if (respuesta != JOptionPane.YES_OPTION) {
+            return;
+        }
+
+        try {
+            String detalle = new GestorVentas().cancelarPedido(ticket, fecha);
+            if (detalle == null) {
+                JOptionPane.showMessageDialog(this, "No se encontró la venta.", "Cancelar pedido",
+                        JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+            java.util.List<String> noRepuestos = devolverAlStock(detalle);
+            servidorSocket.publicarInventario(); // los clientes ven el stock actualizado
+            refrescarTarjetas();
+            if (!noRepuestos.isEmpty()) {
+                JOptionPane.showMessageDialog(this,
+                        "Pedido cancelado, pero estos productos no se encontraron en el inventario "
+                                + "y no se repusieron:\n" + String.join("\n", noRepuestos),
+                        "Stock parcial", JOptionPane.WARNING_MESSAGE);
+            }
+        } catch (IllegalStateException ex) {
+            JOptionPane.showMessageDialog(this, ex.getMessage(), "No se puede cancelar",
+                    JOptionPane.WARNING_MESSAGE);
+            return;
+        } catch (IOException ex) {
+            JOptionPane.showMessageDialog(this, "No se pudo cancelar el pedido: " + ex.getMessage(),
+                    "Error al cancelar", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+        mostrarVentas();
+    }
+ 
     private void mostrarCupones() {
         try {
             modeloCupones.setRowCount(0);
@@ -414,6 +633,15 @@ public class VentanaAdmin extends JFrame {
             JOptionPane.showMessageDialog(this, "No se pudieron cargar los cupones: " + ex.getMessage(),
                     "Error al cargar cupones", JOptionPane.ERROR_MESSAGE);
         }
+    }
+    private void mostrarEnvios() {
+        gestorEnvios.cargar();
+        modeloTarifas.setRowCount(0);
+        for (TarifaEnvio t : gestorEnvios.getTarifas()) {
+            modeloTarifas.addRow(new Object[] { t.getRegion(), t.getCosto(), t.getDiasHabiles() });
+        }
+        txtMontoMinimoGratis.setText(String.valueOf((int) gestorEnvios.getMontoMinimoGratis()));
+        disenoVistas.show(panelVistas, "envios");
     }
  
     private void agregarCupon() {
@@ -569,6 +797,7 @@ public class VentanaAdmin extends JFrame {
  
             inventario.agregarProducto(new Producto(inventario.generarNuevoId(), nombre, precio, stock,
                     categoriaIngresada()));
+            servidorSocket.publicarInventario();
             actualizarVista();
             limpiarCampos();
         } catch (IllegalArgumentException ex) {
@@ -591,6 +820,7 @@ public class VentanaAdmin extends JFrame {
             if (!inventario.actualizarProducto(id, nombre, precio, stock, categoriaIngresada())) {
                 throw new IllegalArgumentException();
             }
+            servidorSocket.publicarInventario();
             actualizarVista();
             limpiarCampos();
         } catch (IllegalArgumentException ex) {
@@ -610,6 +840,7 @@ public class VentanaAdmin extends JFrame {
                 "Confirmar borrado", JOptionPane.YES_NO_OPTION);
         if (respuesta == JOptionPane.YES_OPTION) {
             inventario.eliminarProducto(id);
+            servidorSocket.publicarInventario();
             actualizarVista();
             limpiarCampos();
         }
@@ -836,4 +1067,3 @@ public class VentanaAdmin extends JFrame {
         SwingUtilities.invokeLater(() -> new VentanaAdmin().setVisible(true));
     }
 }
- 

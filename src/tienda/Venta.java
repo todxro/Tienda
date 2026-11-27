@@ -17,6 +17,9 @@ public class Venta {
     private String cupon;
     private double descuento;
     private EstadoPedido estado;
+    private double costoEnvio;
+    private String modalidadEntrega;
+    private String direccionEntrega;
     
     public Venta(String idVenta, Date fecha, String rutCliente, String nombreCliente, 
                  String correoCliente, String detalleProductos, double subtotal, double iva, double total) {
@@ -35,12 +38,32 @@ public class Venta {
     }
 
     // constructor para ventas con cupon, guarda el codigo y el monto descontado
-    public Venta(String idVenta, Date fecha, String rutCliente, String nombreCliente,
+public Venta(String idVenta, Date fecha, String rutCliente, String nombreCliente,
                  String correoCliente, String detalleProductos, double subtotal, double iva, double total,
                  String cupon, double descuento) {
-        this(idVenta, fecha, rutCliente, nombreCliente, correoCliente, detalleProductos, subtotal, iva, total);
+        this(idVenta, fecha, rutCliente, nombreCliente, correoCliente, detalleProductos,
+                subtotal, iva, total, cupon, descuento, 0, Despacho.RETIRO_TIENDA, "Retiro en local");
+    }
+
+    public Venta(String idVenta, Date fecha, String rutCliente, String nombreCliente,
+                 String correoCliente, String detalleProductos, double subtotal, double iva, double total,
+                 String cupon, double descuento, double costoEnvio,
+                 String modalidadEntrega, String direccionEntrega) {
+        this.idVenta = idVenta;
+        this.fecha = fecha;
+        this.rutCliente = rutCliente;
+        this.nombreCliente = nombreCliente;
+        this.correoCliente = correoCliente;
+        this.detalleProductos = detalleProductos;
+        this.subtotal = subtotal;
+        this.iva = iva;
+        this.total = total;
         this.cupon = cupon == null ? "" : cupon;
         this.descuento = descuento;
+        this.estado = EstadoPedido.PENDIENTE;
+        this.costoEnvio = costoEnvio;
+        this.modalidadEntrega = modalidadEntrega == null ? Despacho.RETIRO_TIENDA : modalidadEntrega;
+        this.direccionEntrega = direccionEntrega == null ? "Retiro en local" : direccionEntrega;
     }
 
     public String getIdVenta() { return idVenta; }
@@ -48,6 +71,9 @@ public class Venta {
     public String getRutCliente() { return rutCliente; }
     public String getNombreCliente() { return nombreCliente; }
     public EstadoPedido getEstado() { return estado; }
+    public double getCostoEnvio() { return costoEnvio; }
+    public String getModalidadEntrega() { return modalidadEntrega; }
+    public String getDireccionEntrega() { return direccionEntrega; }
     public void setIdVenta(String idVenta) {
         this.idVenta = idVenta;
     }
@@ -68,8 +94,9 @@ public class Venta {
         return escaparCSV(idVenta) + "," + getFechaFormateada() + "," + escaparCSV(rutCliente) + ","
                 + escaparCSV(nombreCliente) + "," + escaparCSV(correoCliente) + ","
                 + escaparCSV(detalleProductos) + "," + subtotal + "," + iva + "," + total + ","
-                + escaparCSV(cupon) + "," + descuento + "," + estado.name();
-    }
+                + escaparCSV(cupon) + "," + descuento + "," + estado.name() + ","
+                + costoEnvio + "," + escaparCSV(modalidadEntrega) + "," + escaparCSV(direccionEntrega);
+    }   
     private String escaparCSV(String valor) {
         if (valor == null) {
             return "";
