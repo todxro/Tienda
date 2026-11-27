@@ -5,7 +5,8 @@ public enum EstadoPedido {
     PENDIENTE("Pendiente"),
     PREPARANDO("En preparación"),
     ENVIADO("Despachado"),
-    ENTREGADO("Entregado");
+    ENTREGADO("Entregado"),
+    CANCELADO("Cancelado");
 
     private final String texto;
 
@@ -20,10 +21,14 @@ public enum EstadoPedido {
 
     // el estado que viene despues, o null si el pedido ya fue entregado
     public EstadoPedido siguiente() {
-        if (this == ENTREGADO) {
+        if (this == ENTREGADO || this == CANCELADO) {
             return null;
         }
         return values()[ordinal() + 1];
+    }
+
+    public boolean puedeCancelarse() {
+        return this == PENDIENTE || this == PREPARANDO;
     }
 
     // convierte el texto guardado en el csv, si viene vacio es una venta antigua

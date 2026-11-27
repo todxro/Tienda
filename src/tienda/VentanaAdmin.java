@@ -8,6 +8,7 @@ import java.awt.Container;
 import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.Font;
+import java.awt.FlowLayout;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.GridLayout;
@@ -184,9 +185,16 @@ public class VentanaAdmin extends JFrame {
         JButton btnAvanzarEstado = new JButton("Avanzar estado");
         estilizarBotonStock(btnAvanzarEstado);
         btnAvanzarEstado.addActionListener(e -> avanzarEstadoSeleccionado(tablaVentas));
+        JButton btnCancelarPedido = new JButton("Cancelar pedido");
+        estilizarBotonStock(btnCancelarPedido);
+        btnCancelarPedido.addActionListener(e -> cancelarPedidoSeleccionado(tablaVentas));
         JPanel barraVentas = new JPanel(new BorderLayout());
         barraVentas.setBackground(FONDO);
-        barraVentas.add(btnAvanzarEstado, BorderLayout.EAST);
+        JPanel accionesPedido = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        accionesPedido.setBackground(FONDO);
+        accionesPedido.add(btnAvanzarEstado);
+        accionesPedido.add(btnCancelarPedido);
+        barraVentas.add(accionesPedido, BorderLayout.EAST);
         
         // filtro para ver solo los pedidos de un estado
         JComboBox<String> filtroEstado = new JComboBox<>();
@@ -526,7 +534,8 @@ public class VentanaAdmin extends JFrame {
         try {
             EstadoPedido nuevo = new GestorVentas().avanzarEstado(ticket, fecha);
             if (nuevo == null) {
-                JOptionPane.showMessageDialog(this, "Este pedido ya fue entregado.", "Seguimiento",
+                JOptionPane.showMessageDialog(this, "Este pedido ya no puede avanzar de estado.",
+                        "Seguimiento",
                         JOptionPane.INFORMATION_MESSAGE);
                 return;
             }
@@ -536,6 +545,42 @@ public class VentanaAdmin extends JFrame {
             return;
         }
         mostrarVentas();
+    }
+
+    private void cancelarPedidoSeleccionado(JTable tabla) {
+        int fila = tabla.getSelectedRow();
+        if (fila < 0) {
+            JOptionPane.showMessageDialog(this, "Selecciona un pedido de la tabla.",
+                    "Cancelar pedido", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        int filaModelo = tabla.convertRowIndexToModel(fila);
+        String ticket = String.valueOf(modeloVentas.getValueAt(filaModelo, 0));
+        String fecha = String.valueOf(modeloVentas.getValueAt(filaModelo, 1));
+        int confirmacion = JOptionPane.showConfirmDialog(this,
+                "¿Cancelar el pedido " + ticket + " y devolver sus productos al inventario?",
+                "Confirmar cancelación", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+        if (confirmacion != JOptionPane.YES_OPTION) {
+            return;
+        }
+
+        try {
+            EstadoPedido estado = new GestorVentas().cancelarPedido(ticket, fecha, inventario);
+            if (estado == null) {
+                JOptionPane.showMessageDialog(this, "No se encontró el pedido seleccionado.",
+                        "Cancelar pedido", JOptionPane.INFORMATION_MESSAGE);
+                return;
+            }
+            servidorSocket.publicarInventario();
+            actualizarVista();
+            mostrarVentas();
+            JOptionPane.showMessageDialog(this, "Pedido cancelado y stock restaurado.",
+                    "Pedido cancelado", JOptionPane.INFORMATION_MESSAGE);
+        } catch (IllegalStateException | IOException ex) {
+            JOptionPane.showMessageDialog(this, ex.getMessage(), "No se pudo cancelar",
+                    JOptionPane.WARNING_MESSAGE);
+        }
     }
  
     private void mostrarCupones() {

@@ -20,6 +20,7 @@ public class Venta {
     private double costoEnvio;
     private String modalidadEntrega;
     private String direccionEntrega;
+    private String itemsInventario;
     
     public Venta(String idVenta, Date fecha, String rutCliente, String nombreCliente, 
                  String correoCliente, String detalleProductos, double subtotal, double iva, double total) {
@@ -35,6 +36,7 @@ public class Venta {
         this.cupon = "";
         this.descuento = 0;
         this.estado = EstadoPedido.PENDIENTE; // toda venta nueva parte como pendiente
+        this.itemsInventario = "";
     }
 
     // constructor para ventas con cupon, guarda el codigo y el monto descontado
@@ -64,6 +66,7 @@ public Venta(String idVenta, Date fecha, String rutCliente, String nombreCliente
         this.costoEnvio = costoEnvio;
         this.modalidadEntrega = modalidadEntrega == null ? Despacho.RETIRO_TIENDA : modalidadEntrega;
         this.direccionEntrega = direccionEntrega == null ? "Retiro en local" : direccionEntrega;
+        this.itemsInventario = "";
     }
 
     public String getIdVenta() { return idVenta; }
@@ -74,6 +77,10 @@ public Venta(String idVenta, Date fecha, String rutCliente, String nombreCliente
     public double getCostoEnvio() { return costoEnvio; }
     public String getModalidadEntrega() { return modalidadEntrega; }
     public String getDireccionEntrega() { return direccionEntrega; }
+    public String getItemsInventario() { return itemsInventario; }
+    public void setItemsInventario(String itemsInventario) {
+        this.itemsInventario = itemsInventario == null ? "" : itemsInventario;
+    }
     public void setIdVenta(String idVenta) {
         this.idVenta = idVenta;
     }
@@ -95,7 +102,8 @@ public Venta(String idVenta, Date fecha, String rutCliente, String nombreCliente
                 + escaparCSV(nombreCliente) + "," + escaparCSV(correoCliente) + ","
                 + escaparCSV(detalleProductos) + "," + subtotal + "," + iva + "," + total + ","
                 + escaparCSV(cupon) + "," + descuento + "," + estado.name() + ","
-                + costoEnvio + "," + escaparCSV(modalidadEntrega) + "," + escaparCSV(direccionEntrega);
+                + costoEnvio + "," + escaparCSV(modalidadEntrega) + "," + escaparCSV(direccionEntrega)
+                + "," + escaparCSV(itemsInventario);
     }   
     private String escaparCSV(String valor) {
         if (valor == null) {

@@ -22,6 +22,9 @@ catálogo, compra, consultas de productos e inicio de la aplicación.
 - `src/tienda/Cuenta.java`, `src/tienda/Usuario.java` y `src/tienda/Carrito.java`: cuentas de cliente y compras.
 - `src/tienda/GestorUsuarios.java` y `src/tienda/GestorVentas.java`: persistencia de usuarios y ventas.
 - `src/tienda/Venta.java`: datos y formato CSV de una venta.
+- Cada venta recibe un ticket único `PED-...`. ADMIN puede cancelar pedidos pendientes o en
+  preparación; al cancelar, el stock de sus productos vuelve al inventario. Los pedidos despachados
+  o entregados no se pueden cancelar.
 
 ### Archivos y recursos
 - `inventario.csv`, `usuarios.csv` y `ventas.csv`: datos persistidos. Se leen desde la carpeta raíz del proyecto.
@@ -55,10 +58,14 @@ junto a los JAR; los ejecutables no incluyen los datos ni las imágenes.
 
 ### Consultas sobre productos
 
-Cada producto del catálogo incluye el botón **Consultar sobre este producto**. Para habilitar
-las respuestas de Gemini, pega tu clave en `gemini-api-key.txt`, en la carpeta raíz del proyecto.
-El archivo está ignorado por Git, así que la clave no se agrega al repositorio. También puedes
-configurar la variable de entorno `GEMINI_API_KEY` en PowerShell:
+Cada producto del catálogo incluye el botón **Consultar sobre este producto** y el cliente también
+tiene un chat general. Las consultas viajan por el socket al panel ADMIN; el servidor construye el
+contexto con el inventario vigente y realiza la llamada a Gemini.
+
+Para habilitar las respuestas, coloca la clave en el equipo que ejecuta el panel ADMIN:
+pega tu clave en `gemini-api-key.txt`, en la carpeta raíz del proyecto. El archivo está ignorado
+por Git, así que la clave no se agrega al repositorio. También puedes configurar la variable de
+entorno `GEMINI_API_KEY` en PowerShell:
 
 ```powershell
 $env:GEMINI_API_KEY = "TU_CLAVE_DE_GEMINI"
@@ -84,7 +91,7 @@ En VS Code puedes seleccionar **Tienda - Cliente** o **Tienda - Administrador** 
 El panel ADMIN inicia un servidor TCP en el puerto `25565` y atiende a un cliente a la vez.
 El cliente intenta conectarse automáticamente al iniciar. Antes de compilar, completa la
 constante `IP_ADMIN` en `VentanaUsuario.java` con la IPv4 del equipo ADMIN, por ejemplo
-`192.168.1.20`. El ADMIN publica altas, cambios y eliminaciones del catálogo, y el cliente
+`192.168.1.1`. El ADMIN publica altas, cambios y eliminaciones del catálogo, y el cliente
 recibe las reposiciones de stock mientras permanece conectado.
 Para equipos distintos, permite el puerto TCP `25565` en el firewall del equipo ADMIN.
 

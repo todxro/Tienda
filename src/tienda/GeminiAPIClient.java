@@ -18,7 +18,7 @@ public final class GeminiAPIClient {
     private static final int MAX_INTENTOS = 4;
     private static final long[] ESPERAS_REINTENTO_MS = {2000, 5000, 10000};
     private static final String API_URL =
-            "https://generativelanguage.googleapis.com/v1/models/gemini-3.8-flash:generateContent";
+            "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent";
     private static final Pattern TEXTO_RESPUESTA =
             Pattern.compile("\"text\"\\s*:\\s*\"((?:\\\\.|[^\"\\\\])*)\"");
 
@@ -47,7 +47,7 @@ public final class GeminiAPIClient {
                 connection.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
                 connection.setRequestProperty("Accept", "application/json");
                 connection.setConnectTimeout(10000);
-                connection.setReadTimeout(60000);
+                connection.setReadTimeout(120000);
                 connection.setDoOutput(true);
 
                 byte[] input = requestBody.getBytes(StandardCharsets.UTF_8);

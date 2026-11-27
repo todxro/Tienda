@@ -8,32 +8,68 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.nio.file.AtomicMoveNotSupportedException;
 import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 // Guarda las ventas y consulta el historial persistido en ventas.csv.
 public class GestorVentas {
     private static final String RUTA_ARCHIVO = "ventas.csv";
-    private static final String ENCABEZADO = "numeroTicket,fecha,rutCliente,nombreCliente,correoCliente,detalleProductos,subtotal,iva,total,cupon,descuento,estado,costoEnvio,modalidadEntrega,direccionEntrega";    
-    public void guardarVenta(Venta venta) throws IOException {
-        File archivo = new File(RUTA_ARCHIVO);
-        prepararArchivo(archivo);
+    private static final String ENCABEZADO = "numeroTicket,fecha,rutCliente,nombreCliente,correoCliente,"
+            + "detalleProductos,subtotal,iva,total,cupon,descuento,estado,costoEnvio,"
+            + "modalidadEntrega,direccionEntrega,itemsInventario";
+    private static final Object BLOQUEO_ARCHIVO = new Object();
 
-        // Abre el archivo en modo "append" (adicion) para añadir datos al final del archivo 
-        try (BufferedWriter bw = new BufferedWriter(new FileWriter(archivo, true))) {
-            // guarda la informacion del cliente, productos, subtotal, IVA y total
-            bw.write(venta.toCSV());
-            bw.newLine();
+    public String guardarVenta(Venta venta) throws IOException {
+        if (venta == null) {
+            throw new IllegalArgumentException("La venta es obligatoria.");
+        }
+        synchronized (BLOQUEO_ARCHIVO) {
+            File archivo = new File(RUTA_ARCHIVO);
+            prepararArchivo(archivo);
+            String numeroPedido = generarNumeroPedidoUnico(archivo);
+            venta.setIdVenta(numeroPedido);
+
+            try (BufferedWriter bw = Files.newBufferedWriter(archivo.toPath(), StandardCharsets.UTF_8,
+                    java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.APPEND)) {
+                bw.write(venta.toCSV());
+                bw.newLine();
+            }
+            return numeroPedido;
         }
     }
 
     public String guardarVentaInvitado(Venta venta) throws IOException {
-        // Asigna un ticket correlativo antes de registrar una compra sin cuenta.
-        String numeroVenta = String.valueOf(contarVentasInvitado() + 1);
-        venta.setIdVenta(numeroVenta);
         venta.setNombreCliente("Invitado");
-        guardarVenta(venta);
-        return numeroVenta;
+        return guardarVenta(venta);
+    }
+
+    private String generarNumeroPedidoUnico(File archivo) throws IOException {
+        Set<String> existentes = new HashSet<>();
+        if (archivo.exists()) {
+            List<String> lineas = Files.readAllLines(archivo.toPath(), StandardCharsets.UTF_8);
+            for (int i = 1; i < lineas.size(); i++) {
+                String[] datos = parsearLineaCSV(lineas.get(i));
+                if (datos.length > 0) {
+                    existentes.add(datos[0]);
+                }
+            }
+        }
+
+        String numeroPedido;
+        do {
+            numeroPedido = "PED-" + UUID.randomUUID().toString().toUpperCase(java.util.Locale.ROOT);
+        } while (existentes.contains(numeroPedido));
+        return numeroPedido;
     }
 
     private void prepararArchivo(File archivo) throws IOException {
@@ -52,31 +88,6 @@ public class GestorVentas {
         }
     }
 
-    private int contarVentasInvitado() throws IOException {
-        File archivo = new File(RUTA_ARCHIVO);
-        if (!archivo.exists()) {
-            return 0;
-        }
-
-        int cantidad = 0;
-        try (BufferedReader lector = new BufferedReader(new FileReader(archivo))) {
-            String linea;
-            boolean primeraLinea = true;
-            while ((linea = lector.readLine()) != null) {
-                if (primeraLinea) {
-                    primeraLinea = false;
-                    continue;
-                }
-
-                String[] datos = linea.split(",", -1);
-                if (datos.length > 3 && (datos[3].equals("Invitado")
-                        || datos[3].startsWith("Invitado - Venta "))) {
-                    cantidad++;
-                }
-            }
-        }
-        return cantidad;
-    }
     public ArrayList<String[]> obtenerHistorialCliente(String correoCliente) {
         // Devuelve solo fecha, detalle y total de las compras del correo indicado.
         ArrayList<String[]> historial = new ArrayList<>();
@@ -144,34 +155,165 @@ public class GestorVentas {
     
     }
     
-    // avanza un paso el estado de una venta y reescribe el archivo
-    // devuelve el nuevo estado, o null si no se encontro la venta o ya estaba entregada
+    // Avanza un paso el estado del pedido, o null si no se encontró o ya es terminal.
     public EstadoPedido avanzarEstado(String ticket, String fecha) throws IOException {
-        File archivo = new File(RUTA_ARCHIVO);
-        if (!archivo.exists()) {
-            return null;
-        }
-
-        List<String> lineas = Files.readAllLines(archivo.toPath(), StandardCharsets.UTF_8);
-        for (int i = 1; i < lineas.size(); i++) {
-            String[] datos = parsearLineaCSV(lineas.get(i));
-            if (datos.length < 9 || !datos[0].equals(ticket) || !datos[1].equals(fecha)) {
-                continue;
-            }
-
-            String[] completa = completarCamposVenta(datos);
-            EstadoPedido siguiente = EstadoPedido.desdeTexto(completa[11]).siguiente();
-            if (siguiente == null) {
+        synchronized (BLOQUEO_ARCHIVO) {
+            File archivo = new File(RUTA_ARCHIVO);
+            if (!archivo.exists()) {
                 return null;
             }
+            prepararArchivo(archivo);
 
-            
-            completa[11] = siguiente.name();
-            lineas.set(i, reconstruirLineaCSV(completa));
-            Files.write(archivo.toPath(), lineas, StandardCharsets.UTF_8);
-            return siguiente;
+            List<String> lineas = Files.readAllLines(archivo.toPath(), StandardCharsets.UTF_8);
+            for (int i = 1; i < lineas.size(); i++) {
+                String[] datos = parsearLineaCSV(lineas.get(i));
+                if (datos.length < 9 || !datos[0].equals(ticket) || !datos[1].equals(fecha)) {
+                    continue;
+                }
+
+                String[] completa = completarCamposVenta(datos);
+                EstadoPedido siguiente = EstadoPedido.desdeTexto(completa[11]).siguiente();
+                if (siguiente == null) {
+                    return null;
+                }
+
+                completa[11] = siguiente.name();
+                lineas.set(i, reconstruirLineaCSV(completa));
+                guardarLineasVentas(lineas);
+                return siguiente;
+            }
+            return null;
         }
-        return null;
+    }
+
+    public EstadoPedido cancelarPedido(String ticket, String fecha, Inventario inventario)
+            throws IOException {
+        if (inventario == null) {
+            throw new IllegalArgumentException("El inventario es obligatorio.");
+        }
+
+        synchronized (BLOQUEO_ARCHIVO) {
+            File archivo = new File(RUTA_ARCHIVO);
+            if (!archivo.exists()) {
+                return null;
+            }
+            prepararArchivo(archivo);
+
+            List<String> lineas = Files.readAllLines(archivo.toPath(), StandardCharsets.UTF_8);
+            for (int i = 1; i < lineas.size(); i++) {
+                String[] datos = parsearLineaCSV(lineas.get(i));
+                if (datos.length < 9 || !datos[0].equals(ticket) || !datos[1].equals(fecha)) {
+                    continue;
+                }
+
+                String[] completa = completarCamposVenta(datos);
+                EstadoPedido estadoActual = EstadoPedido.desdeTexto(completa[11]);
+                if (!estadoActual.puedeCancelarse()) {
+                    throw new IllegalStateException("Solo se pueden cancelar pedidos pendientes "
+                            + "o en preparación; este pedido está " + estadoActual.getTexto() + ".");
+                }
+
+                Map<String, Integer> cantidades = obtenerProductosParaRestaurar(
+                        completa[15], completa[5], inventario);
+                inventario.ajustarStock(cantidades);
+
+                completa[11] = EstadoPedido.CANCELADO.name();
+                lineas.set(i, reconstruirLineaCSV(completa));
+                try {
+                    guardarLineasVentas(lineas);
+                } catch (IOException ex) {
+                    try {
+                        inventario.ajustarStock(invertirAjustes(cantidades));
+                    } catch (IOException rollbackError) {
+                        ex.addSuppressed(rollbackError);
+                    }
+                    throw ex;
+                }
+                return EstadoPedido.CANCELADO;
+            }
+            return null;
+        }
+    }
+
+    private Map<String, Integer> obtenerProductosParaRestaurar(String itemsInventario,
+                                                                String detalleProductos,
+                                                                Inventario inventario)
+            throws IOException {
+        Map<String, Integer> cantidades = new LinkedHashMap<>();
+        if (itemsInventario != null && !itemsInventario.isBlank()) {
+            for (String item : itemsInventario.split(";")) {
+                String[] partes = item.split(":", -1);
+                if (partes.length != 2 || partes[0].isBlank()) {
+                    throw new IOException("El detalle de productos del pedido no es válido.");
+                }
+                agregarCantidad(cantidades, partes[0], partes[1]);
+            }
+        } else {
+            Pattern patronProducto = Pattern.compile("^(\\d+)x\\s+(.+)$");
+            for (String item : detalleProductos.split("\\|")) {
+                Matcher matcher = patronProducto.matcher(item.trim());
+                if (!matcher.matches()) {
+                    continue;
+                }
+                String nombre = matcher.group(2).trim();
+                Producto encontrado = null;
+                for (Producto producto : inventario.getListaProductos()) {
+                    if (producto.getNombre().equalsIgnoreCase(nombre)) {
+                        if (encontrado != null) {
+                            throw new IOException("No se puede identificar de forma única el producto "
+                                    + nombre + " de este pedido.");
+                        }
+                        encontrado = producto;
+                    }
+                }
+                if (encontrado == null) {
+                    throw new IOException("No se encontró el producto " + nombre
+                            + " para restaurar el stock del pedido.");
+                }
+                agregarCantidad(cantidades, encontrado.getId(), matcher.group(1));
+            }
+        }
+        if (cantidades.isEmpty()) {
+            throw new IOException("El pedido no contiene productos que se puedan restaurar.");
+        }
+        return cantidades;
+    }
+
+    private void agregarCantidad(Map<String, Integer> cantidades, String id, String cantidadTexto)
+            throws IOException {
+        try {
+            int cantidad = Integer.parseInt(cantidadTexto);
+            if (cantidad <= 0) {
+                throw new NumberFormatException();
+            }
+            cantidades.merge(id, cantidad, Math::addExact);
+        } catch (NumberFormatException | ArithmeticException ex) {
+            throw new IOException("La cantidad de productos del pedido no es válida.", ex);
+        }
+    }
+
+    private Map<String, Integer> invertirAjustes(Map<String, Integer> ajustes) {
+        Map<String, Integer> inversos = new LinkedHashMap<>();
+        for (Map.Entry<String, Integer> ajuste : ajustes.entrySet()) {
+            inversos.put(ajuste.getKey(), -ajuste.getValue());
+        }
+        return inversos;
+    }
+
+    private void guardarLineasVentas(List<String> lineas) throws IOException {
+        Path destino = Path.of(RUTA_ARCHIVO).toAbsolutePath();
+        Path temporal = Files.createTempFile(destino.getParent(), "ventas-", ".tmp");
+        try {
+            Files.write(temporal, lineas, StandardCharsets.UTF_8);
+            try {
+                Files.move(temporal, destino, StandardCopyOption.REPLACE_EXISTING,
+                        StandardCopyOption.ATOMIC_MOVE);
+            } catch (AtomicMoveNotSupportedException ex) {
+                Files.move(temporal, destino, StandardCopyOption.REPLACE_EXISTING);
+            }
+        } finally {
+            Files.deleteIfExists(temporal);
+        }
     }
 
     private String[] parsearLineaCSV(String linea) {
@@ -200,7 +342,7 @@ public class GestorVentas {
         return campos.toArray(new String[0]);
     }
     private String[] completarCamposVenta(String[] datos) {
-        String[] completa = new String[15];
+        String[] completa = new String[16];
         for (int i = 0; i < completa.length; i++) {
             completa[i] = i < datos.length ? datos[i] : "";
         }

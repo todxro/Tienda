@@ -1,7 +1,14 @@
 package tienda;
 import java.io.*;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.AtomicMoveNotSupportedException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
 
 // Administra los productos en memoria y sincroniza sus cambios con inventario.csv.
 public class Inventario {
@@ -48,6 +55,70 @@ public class Inventario {
             return true;
         }
         return false;
+    }
+
+    public synchronized void ajustarStock(Map<String, Integer> cambios) throws IOException {
+        if (cambios == null || cambios.isEmpty()) {
+            throw new IllegalArgumentException("Se requiere al menos un ajuste de stock.");
+        }
+
+        cargarDesdeArchivo();
+        Map<Producto, Integer> stockAnterior = new java.util.LinkedHashMap<>();
+        for (Map.Entry<String, Integer> cambio : cambios.entrySet()) {
+            if (cambio.getKey() == null || cambio.getKey().isBlank() || cambio.getValue() == null
+                    || cambio.getValue() == 0) {
+                throw new IllegalArgumentException("El ajuste de stock no es válido.");
+            }
+            Producto producto = buscarProductoEnLista(cambio.getKey());
+            if (producto == null) {
+                throw new IOException("No existe el producto " + cambio.getKey()
+                        + " en el inventario; no se puede ajustar el stock.");
+            }
+            long nuevoStock = (long) producto.getStock() + cambio.getValue();
+            if (nuevoStock < 0 || nuevoStock > Integer.MAX_VALUE) {
+                throw new IOException("El ajuste dejaría un stock no válido para "
+                        + producto.getNombre() + ".");
+            }
+            stockAnterior.put(producto, producto.getStock());
+        }
+
+        for (Map.Entry<String, Integer> cambio : cambios.entrySet()) {
+            Producto producto = buscarProductoEnLista(cambio.getKey());
+            producto.setStock(producto.getStock() + cambio.getValue());
+        }
+        try {
+            guardarEnArchivoEstricto();
+        } catch (IOException ex) {
+            for (Map.Entry<Producto, Integer> anterior : stockAnterior.entrySet()) {
+                anterior.getKey().setStock(anterior.getValue());
+            }
+            throw ex;
+        }
+    }
+
+    private void guardarEnArchivoEstricto() throws IOException {
+        Path destino = Path.of("inventario.csv").toAbsolutePath();
+        Path temporal = Files.createTempFile(destino.getParent(), "inventario-", ".tmp");
+        try {
+            List<String> lineas = new ArrayList<>();
+            lineas.add("id,nombre,precio,stock,categoria");
+            for (Producto producto : listaProductos) {
+                lineas.add(campoCsv(producto.getId()) + ","
+                        + campoCsv(producto.getNombre()) + ","
+                        + producto.getPrecio() + ","
+                        + producto.getStock() + ","
+                        + campoCsv(producto.getCategoria()));
+            }
+            Files.write(temporal, lineas, StandardCharsets.UTF_8);
+            try {
+                Files.move(temporal, destino, StandardCopyOption.REPLACE_EXISTING,
+                        StandardCopyOption.ATOMIC_MOVE);
+            } catch (AtomicMoveNotSupportedException ex) {
+                Files.move(temporal, destino, StandardCopyOption.REPLACE_EXISTING);
+            }
+        } finally {
+            Files.deleteIfExists(temporal);
+        }
     }
 
     public boolean actualizarProducto(String id, String nombre, double precio, int stock, String categoria) {

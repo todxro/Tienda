@@ -23,7 +23,7 @@ import javax.swing.text.DocumentFilter;
 // crearPanelCatalogo, crearTarjeta, consultarProducto, mostrarVentanaChat, mostrarCuenta,
 // mostrarCarrito, agregarAlCarrito, comprarProductos y actualizarVista.
 public class VentanaUsuario extends JFrame {
-    private static final String IP_ADMIN = "192.168."; //poner ip no olvidar ._.
+    private static final String IP_ADMIN = "192.168.1.158"; //poner ip no olvidar ._.
     private static final Color AZUL        = new Color(34, 96, 176);
     private static final Color AZUL_MARINO = new Color(18, 67, 121);
     private static final Color NARANJA     = new Color(244, 132, 54);
@@ -65,6 +65,15 @@ public class VentanaUsuario extends JFrame {
     private final JTextField campoMensajeChat = new JTextField();
     private final JButton botonEnviarChat = new JButton("Enviar");
     private final StringBuilder historialChatGemini = new StringBuilder();
+    private final JPanel panelRecomendacionesGemini = new JPanel();
+    private String idConsultaChatGeneral;
+    private String mensajePendienteGeneral;
+    private String idConsultaChatProducto;
+    private JTextArea areaChatProducto;
+    private JTextField campoPreguntaProducto;
+    private JButton botonEnviarProducto;
+    private StringBuilder historialChatProducto;
+    private String preguntaPendienteProducto;
     private JDialog ventanaChat;
     private Temporizador temporizador;
     private ClienteTiendaSocket clienteSocket;
@@ -507,6 +516,13 @@ public class VentanaUsuario extends JFrame {
 
         panel.add(scrollChat, BorderLayout.CENTER);
         panel.add(pie, BorderLayout.SOUTH);
+
+        panelRecomendacionesGemini.removeAll();
+        panelRecomendacionesGemini.setLayout(new GridLayout(0, 1, 4, 4));
+        panelRecomendacionesGemini.setBackground(FONDO);
+        panelRecomendacionesGemini.setBorder(BorderFactory.createEmptyBorder(0, 8, 0, 0));
+        panelRecomendacionesGemini.setVisible(false);
+        panel.add(panelRecomendacionesGemini, BorderLayout.EAST);
         return panel;
     }
 
@@ -520,48 +536,70 @@ public class VentanaUsuario extends JFrame {
         botonEnviarChat.setEnabled(false);
         campoMensajeChat.setEnabled(false);
         estadoChat.setText("Consultando a Gemini...");
+        mensajePendienteGeneral = mensaje;
 
-        StringBuilder contexto = new StringBuilder("Productos disponibles en el catálogo:\n");
-        for (Producto producto : inventario.getListaProductos()) {
-            contexto.append("- ").append(producto.getNombre())
-                    .append(" | categoría: ").append(producto.getCategoria())
-                    .append(" | precio: $").append(producto.getPrecio())
-                    .append(" | stock: ").append(producto.getStock()).append('\n');
+        if (clienteSocket == null) {
+            areaChat.append("Error: no hay conexión con el servidor/ADMIN." + System.lineSeparator());
+            estadoChat.setText("Sin conexión con el servidor");
+            botonEnviarChat.setEnabled(true);
+            campoMensajeChat.setEnabled(true);
+            return;
         }
-        contexto.append("\nConversación anterior:\n").append(historialChatGemini)
-                .append("\nPregunta del cliente: ").append(mensaje);
 
         new SwingWorker<String, Void>() {
             @Override
             protected String doInBackground() throws Exception {
-                return GeminiAPIClient.responder(contexto.toString());
+                return clienteSocket.consultarGemini(mensaje, historialChatGemini.toString(), null);
             }
 
             @Override
             protected void done() {
                 try {
-                    String respuesta = get();
-                    areaChat.append("Gemini: " + respuesta + System.lineSeparator());
-                    historialChatGemini.append("Cliente: ").append(mensaje)
-                            .append("\nAsistente: ").append(respuesta).append('\n');
-                    estadoChat.setText("Asistente de productos");
+                    idConsultaChatGeneral = get();
+                    areaChat.append("Esperando respuesta del asistente..." + System.lineSeparator());
                 } catch (InterruptedException ex) {
                     Thread.currentThread().interrupt();
-                    areaChat.append("Error: se interrumpió la consulta." + System.lineSeparator());
-                    estadoChat.setText("Consulta interrumpida");
+                    finalizarConsultaGeneral("Se interrumpió el envío al servidor.", true);
                 } catch (java.util.concurrent.ExecutionException ex) {
                     Throwable causa = ex.getCause();
-                    String detalle = causa == null || causa.getMessage() == null
-                            ? ex.getMessage() : causa.getMessage();
-                    areaChat.append("Error al consultar: " + detalle + System.lineSeparator());
-                    estadoChat.setText("No se pudo completar la consulta");
-                } finally {
-                    botonEnviarChat.setEnabled(true);
-                    campoMensajeChat.setEnabled(true);
-                    campoMensajeChat.requestFocusInWindow();
+                    finalizarConsultaGeneral(causa == null ? "No se pudo enviar la consulta."
+                            : causa.getMessage(), true);
                 }
             }
         }.execute();
+    }
+
+    private void finalizarConsultaGeneral(String mensaje, boolean esError) {
+        SwingUtilities.invokeLater(() -> {
+            areaChat.append((esError ? "Error: " : "Gemini: ") + mensaje
+                    + System.lineSeparator());
+            estadoChat.setText(esError ? "No se pudo completar la consulta"
+                    : "Asistente de productos");
+            botonEnviarChat.setEnabled(true);
+            campoMensajeChat.setEnabled(true);
+            campoMensajeChat.requestFocusInWindow();
+        });
+    }
+
+    private void mostrarRecomendacionesGemini(String respuesta) {
+        panelRecomendacionesGemini.removeAll();
+        boolean hayProductos = false;
+        for (Producto producto : inventario.getListaProductos()) {
+            if (producto.getStock() <= 0
+                    || !respuesta.toLowerCase(Locale.ROOT)
+                            .contains(producto.getNombre().toLowerCase(Locale.ROOT))) {
+                continue;
+            }
+            hayProductos = true;
+            JButton agregar = new JButton("Agregar " + producto.getNombre());
+            agregar.setToolTipText("Agregar al carrito");
+            estilizarBoton(agregar, AMARILLO, TEXTO);
+            agregar.addActionListener(e -> agregarAlCarrito(producto));
+            panelRecomendacionesGemini.add(agregar);
+        }
+        panelRecomendacionesGemini.setVisible(hayProductos);
+        panelRecomendacionesGemini.revalidate();
+        panelRecomendacionesGemini.repaint();
     }
 
     // arma la grilla de tarjetas del catalogo en el centro de la ventana
@@ -694,37 +732,44 @@ private JPanel crearTarjeta(Producto producto) {
             conversacion.append("Tú: " + pregunta + System.lineSeparator());
             botonEnviar.setEnabled(false);
             campoPregunta.setEnabled(false);
+            areaChatProducto = conversacion;
+            campoPreguntaProducto = campoPregunta;
+            botonEnviarProducto = botonEnviar;
+            historialChatProducto = historial;
+            preguntaPendienteProducto = pregunta;
 
-            String contexto = "Producto: " + producto.getNombre()
-                    + "\nCategoría: " + producto.getCategoria()
-                    + "\nPrecio: $" + producto.getPrecio()
-                    + "\nStock disponible: " + producto.getStock()
-                    + "\n\nConversación anterior:\n" + historial
-                    + "\nPregunta del cliente: " + pregunta;
+            if (clienteSocket == null) {
+                conversacion.append("Error: no hay conexión con el servidor/ADMIN."
+                        + System.lineSeparator());
+                botonEnviar.setEnabled(true);
+                campoPregunta.setEnabled(true);
+                return;
+            }
 
             new SwingWorker<String, Void>() {
                 @Override
                 protected String doInBackground() throws Exception {
-                    return GeminiAPIClient.responder(contexto);
+                    return clienteSocket.consultarGemini(pregunta, historial.toString(),
+                            producto.getId());
                 }
 
                 @Override
                 protected void done() {
                     try {
-                        String respuesta = get();
-                        conversacion.append("Asistente: " + respuesta + System.lineSeparator());
-                        historial.append("Cliente: ").append(pregunta)
-                                .append("\nAsistente: ").append(respuesta).append('\n');
+                        idConsultaChatProducto = get();
+                        conversacion.append("Esperando respuesta del asistente..."
+                                + System.lineSeparator());
                     } catch (InterruptedException ex) {
                         Thread.currentThread().interrupt();
                         conversacion.append("Error: se interrumpió la consulta."
                                 + System.lineSeparator());
+                        botonEnviar.setEnabled(true);
+                        campoPregunta.setEnabled(true);
                     } catch (java.util.concurrent.ExecutionException ex) {
                         Throwable causa = ex.getCause();
                         String mensaje = causa == null || causa.getMessage() == null
                                 ? ex.getMessage() : causa.getMessage();
                         conversacion.append("Error al consultar: " + mensaje + System.lineSeparator());
-                    } finally {
                         botonEnviar.setEnabled(true);
                         campoPregunta.setEnabled(true);
                         campoPregunta.requestFocusInWindow();
@@ -1260,9 +1305,14 @@ private JPanel crearTarjeta(Producto producto) {
 
         // construye el detalle 
         StringBuilder detalles = new StringBuilder();
+        StringBuilder itemsInventario = new StringBuilder();
         for (Producto p : carrito.getProductos()) {
             int cant = carrito.getCantidad(p.getId());
             detalles.append(cant).append("x ").append(p.getNombre()).append(" | ");
+            if (itemsInventario.length() > 0) {
+                itemsInventario.append(';');
+            }
+            itemsInventario.append(p.getId()).append(':').append(cant);
         }
         if (cuponCompra != null) {
             detalles.append("Cupón ").append(cuponCompra.getCodigo()).append(" (-")
@@ -1271,7 +1321,7 @@ private JPanel crearTarjeta(Producto producto) {
 
         // crea el gestor y genera una nueva venta 
         GestorVentas gestorVentas = new GestorVentas();
-        String numeroTicket = usuario == null ? "" : usuario.getRut();
+        String numeroTicket = "";
         java.util.Date fechaActual = new java.util.Date(); 
         String nombreCompleto = usuario == null ? "Invitado" : usuario.getNombre() + " " + usuario.getApellido();
 
@@ -1291,13 +1341,14 @@ private JPanel crearTarjeta(Producto producto) {
             modalidad,
             direccionFinal
         );
+        nuevaVenta.setItemsInventario(itemsInventario.toString());
 
         // Guarda la venta antes de consumir el cupón para no descontar usos si falla el registro.
         try {
             if (usuario == null) {
                 numeroTicket = gestorVentas.guardarVentaInvitado(nuevaVenta);
             } else {
-                gestorVentas.guardarVenta(nuevaVenta);
+                numeroTicket = gestorVentas.guardarVenta(nuevaVenta);
             }
         } catch (IOException e) {
             JOptionPane.showMessageDialog(ventanaActiva(), "No se pudo guardar la venta: " + e.getMessage(),
@@ -1654,6 +1705,67 @@ private JPanel crearTarjeta(Producto producto) {
                 SwingUtilities.invokeLater(() -> {
                     inventario.eliminarProductoRemoto(idProducto);
                     actualizarVista();
+                });
+            }
+
+            @Override
+            public void alRespuestaIA(String idConsulta, String respuesta) {
+                SwingUtilities.invokeLater(() -> {
+                    if (idConsulta.equals(idConsultaChatGeneral)) {
+                        areaChat.append("Gemini: " + respuesta + System.lineSeparator());
+                        historialChatGemini.append("Cliente: ").append(mensajePendienteGeneral)
+                                .append("\nAsistente: ").append(respuesta).append('\n');
+                        estadoChat.setText("Asistente de productos");
+                        mostrarRecomendacionesGemini(respuesta);
+                        idConsultaChatGeneral = null;
+                        mensajePendienteGeneral = null;
+                        botonEnviarChat.setEnabled(true);
+                        campoMensajeChat.setEnabled(true);
+                        campoMensajeChat.requestFocusInWindow();
+                    } else if (idConsulta.equals(idConsultaChatProducto)) {
+                        if (areaChatProducto != null) {
+                            areaChatProducto.append("Asistente: " + respuesta
+                                    + System.lineSeparator());
+                            mostrarRecomendacionesGemini(respuesta);
+                        }
+                        if (historialChatProducto != null
+                                && preguntaPendienteProducto != null) {
+                            historialChatProducto.append("Cliente: ")
+                                    .append(preguntaPendienteProducto)
+                                    .append("\nAsistente: ").append(respuesta).append('\n');
+                        }
+                        idConsultaChatProducto = null;
+                        if (botonEnviarProducto != null) {
+                            botonEnviarProducto.setEnabled(true);
+                        }
+                        if (campoPreguntaProducto != null) {
+                            campoPreguntaProducto.setEnabled(true);
+                            campoPreguntaProducto.requestFocusInWindow();
+                        }
+                    }
+                });
+            }
+
+            @Override
+            public void alErrorIA(String idConsulta, String error) {
+                SwingUtilities.invokeLater(() -> {
+                    if (idConsulta.equals(idConsultaChatGeneral)) {
+                        finalizarConsultaGeneral(error, true);
+                        idConsultaChatGeneral = null;
+                        mensajePendienteGeneral = null;
+                    } else if (idConsulta.equals(idConsultaChatProducto)) {
+                        if (areaChatProducto != null) {
+                            areaChatProducto.append("Error: " + error
+                                    + System.lineSeparator());
+                        }
+                        idConsultaChatProducto = null;
+                        if (botonEnviarProducto != null) {
+                            botonEnviarProducto.setEnabled(true);
+                        }
+                        if (campoPreguntaProducto != null) {
+                            campoPreguntaProducto.setEnabled(true);
+                        }
+                    }
                 });
             }
 

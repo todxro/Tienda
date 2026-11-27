@@ -9,6 +9,7 @@ import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
+import java.util.UUID;
 
 // Cliente que recibe las actualizaciones de catálogo publicadas por ADMIN.
 public final class ClienteTiendaSocket implements AutoCloseable {
@@ -17,6 +18,8 @@ public final class ClienteTiendaSocket implements AutoCloseable {
         void alActualizarProducto(Producto producto);
         void alEliminarProducto(String idProducto);
         void alDesconectar(IOException error);
+        default void alRespuestaIA(String idConsulta, String respuesta) {}
+        default void alErrorIA(String idConsulta, String error) {}
     }
 
     private final Escucha escucha;
@@ -55,6 +58,26 @@ public final class ClienteTiendaSocket implements AutoCloseable {
         hiloLectura.start();
     }
 
+    public synchronized String consultarGemini(String pregunta, String historial,
+                                               String idProductoEnfocado) throws IOException {
+        if (cerrado || salida == null) {
+            throw new IOException("No hay conexión con el servidor ADMIN.");
+        }
+        if (pregunta == null || pregunta.trim().isEmpty()) {
+            throw new IOException("Escribe una pregunta para el asistente.");
+        }
+
+        String idConsulta = UUID.randomUUID().toString();
+        String producto = idProductoEnfocado == null ? "" : idProductoEnfocado;
+        String conversacion = historial == null ? "" : historial;
+        salida.println("AI_ASK|" + codificar(idConsulta) + "|" + codificar(producto) + "|"
+                + codificar(conversacion) + "|" + codificar(pregunta.trim()));
+        if (salida.checkError()) {
+            throw new IOException("No se pudo enviar la consulta al servidor ADMIN.");
+        }
+        return idConsulta;
+    }
+
     private void escuchar() {
         try (BufferedReader entrada = new BufferedReader(new InputStreamReader(
                 socket.getInputStream(), StandardCharsets.UTF_8))) {
@@ -80,6 +103,14 @@ public final class ClienteTiendaSocket implements AutoCloseable {
         }
 
         String[] campos = mensaje.split("\\|", -1);
+        if (campos.length == 3 && "AI_RESPONSE".equals(campos[0])) {
+            escucha.alRespuestaIA(decodificar(campos[1]), decodificar(campos[2]));
+            return;
+        }
+        if (campos.length == 3 && "AI_ERROR".equals(campos[0])) {
+            escucha.alErrorIA(decodificar(campos[1]), decodificar(campos[2]));
+            return;
+        }
         if (campos.length == 2 && "DELETE".equals(campos[0])) {
             escucha.alEliminarProducto(decodificar(campos[1]));
             return;
@@ -106,6 +137,11 @@ public final class ClienteTiendaSocket implements AutoCloseable {
 
     private static String decodificar(String valor) {
         return new String(Base64.getUrlDecoder().decode(valor), StandardCharsets.UTF_8);
+    }
+
+    private static String codificar(String valor) {
+        return Base64.getUrlEncoder().withoutPadding()
+                .encodeToString(valor.getBytes(StandardCharsets.UTF_8));
     }
 
     @Override
